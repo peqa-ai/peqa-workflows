@@ -2,7 +2,7 @@
 
 Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.5.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.6.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -31,6 +31,7 @@ Las consultas punteadas se usan cuando aportan al trabajo. También puedes invoc
 
 - `peqa-idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
 - `peqa-revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
+- El review busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **blast radius**: servicios, consumidores y datos que podrían verse afectados. Tests verdes en un servicio no prueban toda la integración. Consulta [pruebas e impacto](skills/peqa-revisa/references/validation.md).
 - Los workflows y swarms se usan cuando tú los eliges. La ejecución normal utiliza subagentes.
 
 En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/peqa-dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/peqa-revisa/references/budget.md).
@@ -44,6 +45,29 @@ En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entor
 | [peqa-revisa](skills/peqa-revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
 | [peqa-memoria-recuerda](skills/peqa-memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
 | [peqa-memoria-extraer](skills/peqa-memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
+
+## Varios servicios con Git submodules
+
+**Abre el proyecto en el repositorio padre.** Así el agente puede reconocer los servicios, sus contratos y las dependencias del conjunto, manteniendo los cambios y pruebas en cada repositorio correspondiente.
+
+```mermaid
+flowchart TD
+    accTitle: PRs de submódulos antes del PR padre
+    accDescr: El trabajo se coordina desde el repositorio padre. Se crean primero los PRs de los servicios hijos modificados, se actualizan los punteros a commits publicados y se crea al final el PR del padre con sus dependencias y pruebas.
+
+    raiz["Repositorio padre<br/>Contexto del conjunto"]
+    servicioA["PR del servicio A"]
+    servicioB["PR del servicio B"]
+    punteros["Actualizar gitlinks<br/>Commits publicados"]
+    padre["PR del padre<br/>Dependencias y pruebas"]
+
+    raiz --> servicioA & servicioB
+    servicioA & servicioB --> punteros --> padre
+```
+
+Solo los hijos modificados necesitan PR. Con submódulos anidados se sigue el orden desde los más profundos hacia arriba. El padre puede quedar en draft mientras se integran los hijos; si un squash o rebase cambia sus SHAs, se actualizan los punteros y se comprueba la combinación final antes de fusionar el padre. [Workflow completo](references/submodules.md).
+
+Cuando pidas guardar memoria de esta arquitectura, se conserva en el padre el contexto transversal: servicios, rutas relativas, responsabilidades y contratos, con sus fuentes. Las notas propias de un hijo conservan su procedencia. Puedes seguir trabajando únicamente en un hijo si ese es tu alcance.
 
 ## Memoria entre sesiones
 

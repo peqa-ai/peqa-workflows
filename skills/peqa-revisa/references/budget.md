@@ -4,6 +4,8 @@ Un CR es una ejecución independiente de revisión que inicia este flujo. El má
 
 El padre es dueño del contador y de los informes. Los hijos no escriben el registro ni abren nuevas revisiones. El helper incluido reserva de forma atómica para evitar que dos padres locales admitan una cuarta pasada. Su estado vive bajo el `git-common-dir`, fuera de los archivos versionados del proyecto.
 
+Para PRs de varios repositorios o submódulos, sigue [revisión del conjunto](../../../references/submodules.md#revisar-el-conjunto): cada PR conserva su historial y presupuesto. Una prueba ejecutada por el padre no es una nueva pasada independiente; un nuevo revisor sí lo es, aunque solo compruebe tests.
+
 Usa la ruta absoluta del helper incluida en esta instalación:
 
 ```sh

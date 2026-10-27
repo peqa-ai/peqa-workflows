@@ -21,6 +21,18 @@ El helper elige `.peqa/memoria`. Si solo existe `.peqa-stack/memoria`, lo reutil
 
 ## Nota y procedencia
 
+### Repositorios con submódulos
+
+Si el trabajo abarca una arquitectura de servicios con submódulos, lee [trabajar desde el padre](submodules.md) y toma la raíz elegida del conjunto como `--repo` para su memoria transversal. Comprueba el padre real y el alcance del encargo; estar dentro de un hijo no autoriza escribir silenciosamente en otro repositorio. Si se trabaja únicamente en un hijo, conserva su almacén y vincula la relación conocida con el padre.
+
+Cuando el usuario pida guardar contexto de esa arquitectura, conserva notas pequeñas sobre la organización: raíz lógica, rutas relativas de servicios, responsabilidades, contratos/dependencias relevantes y dónde se encuentran instrucciones y pruebas. Cita `.gitmodules` y fuentes de los hijos con fecha y revisión observadas; marca componentes sin inspeccionar. Registra decisiones y contexto útil, evitando una copia exhaustiva del inventario que ya mantiene Git o estados transitorios de PRs.
+
+Una nota puede usar categoría `arquitectura` y etiquetas `submodulos` y del servicio. Mantén el mapa compartible en alcance `project`; las rutas absolutas de una computadora y cuentas locales van en `machine`. El esquema existente admite este contenido en el cuerpo y los metadatos; no necesita un segundo formato ni otro helper.
+
+Al extraer, recupera primero la topología pertinente del padre y luego el tema o servicio solicitado. Contrasta las rutas con el estado actual de Git mediante lectura antes de usarlas. Si existen notas propias de un hijo dentro del alcance elegido, léelas en su almacén con `--repo` explícito y cita su procedencia; no las traslades, dupliques o mezcles automáticamente. El helper consulta un almacén por llamada y no descubre submódulos por sí solo. Declara los almacenes y componentes que quedaron fuera de la recuperación.
+
+### Formato de cada nota
+
 Cada archivo es Markdown con un objeto JSON entre delimitadores `---`. El esquema `1` conserva `id`, `title`, `category`, `tags`, `source`, `scope`, `machine`, `verification`, `environment`, `recheck`, `created_at` y `updated_at`. JSON evita una dependencia YAML y se puede leer o editar manualmente respetando el esquema.
 
 - `id`, categoría y máquina: slug ASCII minúsculo de 1–64 caracteres, letras, números y guiones.

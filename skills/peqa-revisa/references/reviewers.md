@@ -38,4 +38,4 @@ Si falta el binario, autenticación, modelo, esfuerzo o ejecución, usa un subag
 
 ## Brief de revisión
 
-Incluye objetivo y requisitos originales, ruta de fuentes, base y revisión exactas, diff y archivos nuevos, alcance y checks observados. Pide veredicto y solo hallazgos materiales con evidencia, condiciones, impacto y corrección mínima. La revisión es de solo lectura, sin más agentes, edición ni acciones en GitHub. Para una comprobación posterior añade hallazgos abiertos y cambios desde la pasada anterior, manteniendo la misma base del cambio.
+Incluye objetivo y requisitos originales, ruta de fuentes, base y revisión exactas, diff y archivos nuevos, alcance, mapa de repositorios y checks observados o pendientes. Pide la búsqueda de pruebas disponibles, solicitudes de ejecución al padre, análisis de blast radius y veredicto según [pruebas e impacto](validation.md), además de hallazgos materiales con evidencia, condiciones y corrección mínima. La revisión es de solo lectura, sin más agentes, edición ni acciones en GitHub. Para una comprobación posterior añade hallazgos abiertos y cambios desde la pasada anterior, manteniendo la misma base del cambio.
