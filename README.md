@@ -2,7 +2,7 @@
 
 Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.3.0` · Borrador público para revisión manual · Licencia pendiente
+`0.3.1` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -102,7 +102,7 @@ También puedes sustituir `peqa-ai/peqa-workflows` por una ruta local en `market
 - Cliente con acceso al proyecto y herramientas de preguntas y subagentes cuando correspondan.
 - Python 3.10+ para los scripts. La memoria requiere shell local y **macOS/Linux**; Windows queda pendiente.
 - El plugin no incluye modelos ni credenciales, ni depende de TStack.
-- Pendientes: licencia de distribución y validación integral de instalación y coordinación entre sesiones reales.
+- Pendiente: validación integral de instalación y coordinación entre sesiones reales.
 
 Desde la raíz del plugin:
 
@@ -111,6 +111,10 @@ python3 -m unittest discover -s tests -v
 ```
 
 Las pruebas usan repositorios temporales y datos sintéticos.
+
+## Licencia
+
+[MIT](LICENSE). Puedes usar, modificar y distribuir el plugin, también con fines comerciales y en productos cerrados, conservando el aviso de copyright y la licencia. Se proporciona sin garantía.
 
 ## Fuentes
 

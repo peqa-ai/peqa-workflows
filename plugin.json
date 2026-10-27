@@ -1,8 +1,9 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "peqa-workflows",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Skills reutilizables para dirigir, revisar, cuestionar ideas y guardar o recuperar memoria de cualquier proyecto.",
+  "license": "MIT",
   "author": {
     "name": "PEQA"
   },
