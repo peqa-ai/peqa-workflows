@@ -1,8 +1,10 @@
-# Selección del revisor
+# Selección y ejecución del revisor
+
+Elige la sección según el entorno del agente principal que coordina la revisión. Cada sección indica cómo ejecutar al revisor desde ese entorno.
 
 La preferencia fija es `gpt-6.1-sol` en `xhigh`. Esto expresa nuestra elección, no una búsqueda del modelo más reciente. Registra selección solicitada, selección admitida y la identidad de ejecución que exponga el host; no infieras identidad de lo que el modelo dice de sí mismo.
 
-## En T3 Code
+## Agente principal en T3 Code
 
 Lee primero la selección, preguntas pendientes y ciclo de tareas de [herramientas del entorno](../../../references/runtime-tools.md). Usa el catálogo y la ruta de orquestación del host, también cuando el padre sea Claude. Consulta `orchestrator_capabilities` según su política de una consulta por hilo; no la repitas si ya hay un resultado válido para esa ejecución.
 
@@ -10,11 +12,11 @@ Selecciona el proveedor que realmente ofrezca `gpt-6.1-sol`, verifica que acepte
 
 Una ruta deshabilitada o rechazada en T3 no se elude con un CLI. Si la ruta Sol no está disponible, el fallback ya autorizado por este skill es un revisor independiente del motor actual a través de una ruta que el host permita. Respeta sus reglas para elegir delegación T3 o subagente nativo. Informa la limitación y el modelo efectivo. Si tampoco existe esa ruta, informa revisión incompleta.
 
-## Fuera de T3, padre Codex
+## Agente principal en Codex, fuera de T3 Code
 
 Usa un subagente nativo con selección explícita de `gpt-6.1-sol` y `xhigh` cuando esos controles estén disponibles. Si el cliente no puede seleccionar o ejecutar la combinación, utiliza el fallback independiente del motor actual. Registra el esfuerzo como desconocido si el host no lo expone; no lo anuncies como xhigh.
 
-## Fuera de T3, padre Claude Code
+## Agente principal en Claude Code, fuera de T3 Code
 
 Primero comprueba si hay una ruta nativa verificada al modelo exacto. Un `Agent` de Claude no es un revisor Sol. Si no hay ruta nativa a Sol, usa un Codex CLI ya instalado y autenticado; no instales otro proveedor, inicies login ni pidas credenciales como parte de una revisión.
 
@@ -36,6 +38,6 @@ Inspecciona exit code, integridad del informe, eventos y revisión cubierta. Con
 
 Si falta el binario, autenticación, modelo, esfuerzo o ejecución, usa un subagente fresco del motor actual. Este fallback está autorizado por el usuario y no requiere otra pregunta. Si el intento Sol ya empezó, reserva otra pasada para el fallback. Si no queda presupuesto, entrega revisión incompleta y evidencia del padre.
 
-## Brief de revisión
+## Contexto que recibe el revisor
 
 Incluye objetivo y requisitos originales, ruta de fuentes, base y revisión exactas, diff y archivos nuevos, alcance, mapa de repositorios y checks observados o pendientes. Pide la búsqueda de pruebas disponibles, solicitudes de ejecución al padre, análisis de blast radius y veredicto según [pruebas e impacto](validation.md), además de hallazgos materiales con evidencia, condiciones y corrección mínima. La revisión es de solo lectura, sin más agentes, edición ni acciones en GitHub. Para una comprobación posterior añade hallazgos abiertos y cambios desde la pasada anterior, manteniendo la misma base del cambio.
