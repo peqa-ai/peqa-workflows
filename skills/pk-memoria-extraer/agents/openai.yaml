@@ -1,0 +1,4 @@
+interface:
+  display_name: "PK memoria extraer"
+  short_description: "Recupera memoria del proyecto por categoría o tema"
+  default_prompt: "Usa $pk-memoria-extraer para recuperar las memorias relevantes para esta tarea."

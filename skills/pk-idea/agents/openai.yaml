@@ -1,0 +1,4 @@
+interface:
+  display_name: "PK idea"
+  short_description: "Cuestiona producto e implementación en tres rondas"
+  default_prompt: "Usa $pk-idea para cuestionar esta idea y recomendar un enfoque."

@@ -1,9 +1,9 @@
 ---
-name: peqa-revisa
-description: Use when independent code review is requested, peqa-dirige reaches a review gate, or fixes on an existing PR need adversarial rechecking within its remaining review budget.
+name: pk-revisa
+description: Use when independent code review is requested, pk-dirige reaches a review gate, or fixes on an existing PR need adversarial rechecking within its remaining review budget.
 ---
 
-# PEQA revisa
+# PK revisa
 
 Revisión adversarial por defecto: un revisor independiente intenta refutar que el cambio cumple su objetivo. El padre contrasta sus afirmaciones y decide. Modelo preferido exacto: **`gpt-6.1-sol`, esfuerzo `xhigh`**. La alternativa autorizada es un subagente del motor actual, con identidad y esfuerzo efectivos declarados.
 

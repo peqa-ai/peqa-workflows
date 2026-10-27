@@ -2,22 +2,22 @@
 
 Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.3.1` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.4.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
-`peqa-dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos.
+`pk-dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos.
 
 ```mermaid
 flowchart TD
     accTitle: Coordinación de una implementación con PEQA
-    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar peqa-idea para decisiones y peqa-revisa para una revisión independiente. Ambos devuelven sus resultados al padre, que conserva la responsabilidad de entregar.
+    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar pk-idea para decisiones y pk-revisa para una revisión independiente. Ambos devuelven sus resultados al padre, que conserva la responsabilidad de entregar.
 
-    dirige["peqa-dirige<br/>Coordina el trabajo"]
-    idea["peqa-idea<br/>Hasta 3 rondas"]
+    dirige["pk-dirige<br/>Coordina el trabajo"]
+    idea["pk-idea<br/>Hasta 3 rondas"]
     agentes["Subagentes<br/>Implementan por partes"]
     padre["El padre<br/>Integra y verifica"]
-    revisa["peqa-revisa<br/>Máx. 3 por PR"]
+    revisa["pk-revisa<br/>Máx. 3 por PR"]
     entrega["Entrega<br/>Cambios y evidencia"]
 
     dirige -. "Si hace falta" .-> idea
@@ -29,21 +29,21 @@ flowchart TD
 
 Las consultas punteadas se usan cuando aportan al trabajo. También puedes invocar cada skill por separado.
 
-- `peqa-idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
-- `peqa-revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
+- `pk-idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
+- `pk-revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
 - Los workflows y swarms se usan cuando tú los eliges. La ejecución normal utiliza subagentes.
 
-En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/peqa-dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/peqa-revisa/references/budget.md).
+En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/pk-dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/pk-revisa/references/budget.md).
 
 ## Qué le puedes pedir
 
 | Skill | Ejemplo |
 | --- | --- |
-| [peqa-dirige](skills/peqa-dirige/SKILL.md) | "Implementa este cambio y coordina a los agentes". |
-| [peqa-idea](skills/peqa-idea/SKILL.md) | "Cuestiona esta idea, también desde la implementación". |
-| [peqa-revisa](skills/peqa-revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
-| [memoria-recuerda](skills/memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
-| [memoria-extraer](skills/memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
+| [pk-dirige](skills/pk-dirige/SKILL.md) | "Implementa este cambio y coordina a los agentes". |
+| [pk-idea](skills/pk-idea/SKILL.md) | "Cuestiona esta idea, también desde la implementación". |
+| [pk-revisa](skills/pk-revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
+| [pk-memoria-recuerda](skills/pk-memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
+| [pk-memoria-extraer](skills/pk-memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
 
 ## Memoria entre sesiones
 
@@ -52,11 +52,11 @@ Guardas conceptos concretos cuando lo pides. Una sesión posterior puede recuper
 ```mermaid
 flowchart TD
     accTitle: Memoria del proyecto entre dos sesiones
-    accDescr: A petición del usuario, memoria-recuerda guarda notas con procedencia en el proyecto. En otra sesión, memoria-extraer consulta ese almacén y devuelve notas y fuentes sin modificarlas.
+    accDescr: A petición del usuario, pk-memoria-recuerda guarda notas con procedencia en el proyecto. En otra sesión, pk-memoria-extraer consulta ese almacén y devuelve notas y fuentes sin modificarlas.
 
-    actual["memoria-recuerda<br/>Sesión actual"]
+    actual["pk-memoria-recuerda<br/>Sesión actual"]
     memoria[(".peqa/memoria<br/>Notas con procedencia")]
-    nueva["memoria-extraer<br/>Nueva sesión"]
+    nueva["pk-memoria-extraer<br/>Nueva sesión"]
 
     actual -->|Pides guardar| memoria
     memoria -->|Pides recuperar| nueva
@@ -84,7 +84,9 @@ codex plugin marketplace add peqa-ai/peqa-workflows
 codex plugin add peqa-workflows@peqa
 ```
 
-Inicia una nueva sesión y selecciona el skill. En Claude Code, por ejemplo: `/peqa-workflows:peqa-dirige`.
+Inicia una nueva sesión y selecciona el skill. En Claude Code, por ejemplo: `/peqa-workflows:pk-dirige`.
+
+Desde `0.4.0`, todos los skills usan el prefijo `pk-`. Si vienes de `0.3.x`, actualiza tus invocaciones a los nombres de la tabla. Las memorias y los contadores de revisión conservan sus rutas y datos.
 
 <details>
 <summary>Probar una copia local sin instalarla globalmente</summary>
@@ -115,6 +117,10 @@ Las pruebas usan repositorios temporales y datos sintéticos.
 ## Licencia
 
 [MIT](LICENSE). Puedes usar, modificar y distribuir el plugin, también con fines comerciales y en productos cerrados, conservando el aviso de copyright y la licencia. Se proporciona sin garantía.
+
+## Contribuir
+
+Antes de añadir o modificar un skill, lee las [convenciones del proyecto](AGENTS.md). `CLAUDE.md` importa ese mismo archivo.
 
 ## Fuentes
 

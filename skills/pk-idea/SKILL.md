@@ -1,9 +1,9 @@
 ---
-name: peqa-idea
-description: Use when an idea, feature, plan or technical approach needs challenging, product or implementation decisions are materially unresolved, or peqa-dirige needs clarification before dependent work.
+name: pk-idea
+description: Use when an idea, feature, plan or technical approach needs challenging, product or implementation decisions are materially unresolved, or pk-dirige needs clarification before dependent work.
 ---
 
-# PEQA idea
+# PK idea
 
 Cuestiona la idea desde producto e implementación para producir una decisión ejecutable. Usa **como máximo tres rondas de preguntas por iniciativa**, incluida cualquier aclaración o confirmación que abra nuevas decisiones. Puede terminar antes. Conserva el contador al reanudar o cuando otro padre llame el skill para la misma iniciativa.
 

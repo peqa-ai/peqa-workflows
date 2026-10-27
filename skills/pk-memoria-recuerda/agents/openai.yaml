@@ -1,0 +1,4 @@
+interface:
+  display_name: "PK memoria recuerda"
+  short_description: "Guarda conceptos duraderos del proyecto por tema"
+  default_prompt: "Usa $pk-memoria-recuerda para guardar los conceptos importantes de esta sesión."

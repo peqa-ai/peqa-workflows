@@ -1,0 +1,4 @@
+interface:
+  display_name: "PK revisa"
+  short_description: "Revisión adversarial con límite de tres CR por PR"
+  default_prompt: "Usa $pk-revisa para revisar este cambio dentro del presupuesto del PR."

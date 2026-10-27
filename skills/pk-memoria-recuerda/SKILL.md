@@ -1,9 +1,9 @@
 ---
-name: memoria-recuerda
+name: pk-memoria-recuerda
 description: Save or update small, durable project memories when the user asks to remember session decisions, conventions or operational context for future sessions. Use for project knowledge, not specifications, task plans or full transcripts.
 ---
 
-# Memoria recuerda
+# PK memoria recuerda
 
 Guarda conceptos pequeños que otra sesión necesite recuperar. El plugin es reutilizable; la memoria pertenece al proyecto elegido, no al directorio del plugin ni a una memoria global del cliente. Guardar está autorizado cuando el usuario lo pide; no agregues escrituras automáticas al implementar o extraer contexto.
 

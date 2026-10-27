@@ -38,7 +38,7 @@ Los modos de aprobación no garantizan solo lectura. Delimita herramientas y efe
 
 Usa el mecanismo nativo disponible, por ejemplo `Agent` en Claude Code o `spawn_agent` en Codex, con sus controles reales de modelo, espera y cancelación. Un agente Claude sigue siendo Claude. Sin subagentes, el padre puede ejecutar trabajo autorizado directamente; una revisión independiente queda incompleta si tampoco existe una ruta de revisión.
 
-Para el modelo concreto de `peqa-revisa`, consulta [su adaptador](../skills/peqa-revisa/references/reviewers.md). Su fallback no autoriza cambiar cualquier proveedor o configuración de implementación.
+Para el modelo concreto de `pk-revisa`, consulta [su adaptador](../skills/pk-revisa/references/reviewers.md). Su fallback no autoriza cambiar cualquier proveedor o configuración de implementación.
 
 ## PRs y entrega en T3
 
@@ -48,7 +48,7 @@ Si queda trabajo autorizado esperando checks o reviews, termina actualizaciones 
 
 ## Comunicación entre sesiones
 
-Para descubrir sesiones relacionadas y negociar recursos antes de implementar, usa [coordinación de peqa-dirige](../skills/peqa-dirige/references/coordination.md). Un listado de hilos o un mensaje no constituyen una reserva.
+Para descubrir sesiones relacionadas y negociar recursos antes de implementar, usa [coordinación de pk-dirige](../skills/pk-dirige/references/coordination.md). Un listado de hilos o un mensaje no constituyen una reserva.
 
 ## Scripts locales
 

@@ -1,4 +1,0 @@
-interface:
-  display_name: "PEQA revisa"
-  short_description: "Revisión adversarial con límite de tres CR por PR"
-  default_prompt: "Usa $peqa-revisa para revisar este cambio dentro del presupuesto del PR."
