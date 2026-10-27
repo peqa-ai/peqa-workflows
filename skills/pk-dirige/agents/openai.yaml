@@ -1,4 +1,0 @@
-interface:
-  display_name: "PK dirige"
-  short_description: "Coordina implementación, subagentes y sesiones"
-  default_prompt: "Usa $pk-dirige para coordinar e implementar este cambio."
