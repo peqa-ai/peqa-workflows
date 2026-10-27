@@ -1,0 +1,4 @@
+interface:
+  display_name: "Memoria recuerda"
+  short_description: "Guarda conceptos duraderos del proyecto por tema"
+  default_prompt: "Usa $memoria-recuerda para guardar los conceptos importantes de esta sesión."

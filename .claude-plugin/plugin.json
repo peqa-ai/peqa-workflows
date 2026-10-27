@@ -1,0 +1,8 @@
+{
+  "name": "peqa-workflows",
+  "version": "0.3.0",
+  "description": "Dirige, revisa, idea y recuerda: cinco skills reutilizables en cualquier proyecto.",
+  "author": {
+    "name": "PEQA"
+  }
+}

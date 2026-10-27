@@ -1,0 +1,7 @@
+{
+  "name": "peqa",
+  "owner": {"name": "PEQA"},
+  "plugins": [
+    {"name": "peqa-workflows", "source": "./", "description": "Dirige, revisa, idea y recuerda contexto de cualquier proyecto."}
+  ]
+}

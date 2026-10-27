@@ -1,0 +1,4 @@
+interface:
+  display_name: "Memoria extraer"
+  short_description: "Recupera memoria del proyecto por categoría o tema"
+  default_prompt: "Usa $memoria-extraer para recuperar las memorias relevantes para esta tarea."
