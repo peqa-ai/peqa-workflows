@@ -17,6 +17,8 @@ El padre fija objetivo original, alcance, base, revisión exacta, requisitos y r
 
 En toda revisión, aplica [pruebas y blast radius](references/validation.md): descubre los tests disponibles, haz que el padre ejecute los pertinentes y evalúa consumidores, datos e integración afectados. Si hay submódulos, carga [revisión del conjunto](../../references/submodules.md#revisar-el-conjunto); el diff del padre no sustituye los diffs y la evidencia de sus hijos.
 
+Incluye [seguridad aplicable al cambio](references/security.md), con la edición vigente de OWASP Top 10 y la última edición final de NIST SSDF verificadas en fuentes oficiales. Delimita los controles pertinentes, su evidencia y los mínimos del proyecto; declara lo no verificado.
+
 Si ya se usaron tres pasadas, el padre verifica los cambios y ejecuta checks pertinentes sin iniciar una cuarta revisión. Informa qué evidencia cubre el estado final y qué quedó sin revisión independiente. El agotamiento del presupuesto no es aprobación.
 
 ## Una pasada
@@ -29,6 +31,6 @@ Si ya se usaron tres pasadas, el padre verifica los cambios y ejecuta checks per
 
 ## Entrega
 
-Devuelve al padre o al usuario el veredicto, hallazgos materiales, decisiones del padre, estado y evidencia de pruebas por repositorio, blast radius razonado con cobertura pendiente, revisión cubierta, modelo/esfuerzo solicitados y efectivos, ruta, fallback si lo hubo y contador `CR n/3` por PR. Declara qué comportamiento se comprobó y qué sigue sin comprobar; tests ausentes, bloqueados o fallidos no se presentan como aprobados.
+El padre entrega el [informe consolidado](references/report.md) con recomendación y evaluación de mínimos en la parte superior, en el idioma del usuario. Incluye atribución de IA, alcance, hallazgos materiales, decisiones del padre, evidencia de pruebas y seguridad por repositorio, blast radius con cobertura pendiente, revisión cubierta, modelo/esfuerzo solicitados y efectivos, ruta, fallback si lo hubo y contador `CR n/3` por PR. Declara qué comportamiento se comprobó y qué sigue sin comprobar; tests ausentes, bloqueados o fallidos no se presentan como aprobados.
 
 Los resultados permanecen en el informe y registro local. Este skill no publica comentarios ni reviews en GitHub, incluidos comentarios de seguimiento o respuestas a bots. Las correcciones cosméticas, de formato o documentación sin cambio de comportamiento no disparan otra pasada.

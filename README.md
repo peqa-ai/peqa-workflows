@@ -2,7 +2,7 @@
 
 Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.6.1` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.7.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -32,6 +32,8 @@ Las consultas punteadas se usan cuando aportan al trabajo. También puedes invoc
 - `peqa-idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
 - `peqa-revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
 - El review busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **blast radius**: servicios, consumidores y datos que podrían verse afectados. Tests verdes en un servicio no prueban toda la integración. Consulta [pruebas e impacto](skills/peqa-revisa/references/validation.md).
+- El [informe consolidado](skills/peqa-revisa/references/report.md) abre con **aprobación sugerida, cambios requeridos o revisión incompleta** y evalúa mínimos de requisitos, pruebas, seguridad y compatibilidad. Adapta el idioma e identifica la generación por IA y al solicitante cuando se conoce.
+- La [revisión de seguridad](skills/peqa-revisa/references/security.md) contrasta versiones oficiales de OWASP Top 10 y NIST SSDF, comprueba controles pertinentes al cambio y declara los pendientes. No equivale a una certificación ni publica aprobaciones en GitHub.
 - Los workflows y swarms se usan cuando tú los eliges. La ejecución normal utiliza subagentes.
 
 En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/peqa-dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/peqa-revisa/references/budget.md).
