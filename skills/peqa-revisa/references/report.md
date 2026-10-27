@@ -2,6 +2,8 @@
 
 El padre prepara el informe final después de adjudicar los hallazgos. Abre con la recomendación y la evaluación de mínimos; después presenta la evidencia. Un resultado de un subagente solo cubre su encargo y no sustituye el consolidado.
 
+Prepara el registro estructurado, conserva la captura del estado probado y ejecuta [los validadores portables](../../../references/checks-and-hooks.md#validar-el-consolidado-y-su-evidencia) antes de entregar. El render del registro facilita conservar el encabezado y evita contradicciones entre mínimos y recomendación. Un registro válido puede recomendar cambios o declarar revisión incompleta; el helper no demuestra que los tests declarados se ejecutaron.
+
 ## Recomendación y mínimos
 
 Evalúa cuatro criterios para el alcance revisado: requisitos acordados, validación funcional pertinente, controles de seguridad aplicables y compatibilidad de los componentes afectados. Cada criterio indica `cumple`, `no cumple`, `no verificado` o `no aplica`, con evidencia o justificación. Define los mínimos desde el encargo, las reglas del proyecto y [la revisión de seguridad](security.md); no añadas mejoras opcionales como condiciones de aprobación.

@@ -11,6 +11,8 @@ Identifica la iniciativa por su objetivo y brief. Cambiar de agente, rama, archi
 
 ## Preparar
 
+Consulta el estado del [registro opcional de uso](../../references/usage.md) sin activarlo. Si el usuario ya lo habilitó y el entorno permite escribir, registra esta invocación con su ID y resultado.
+
 Lee lo que el usuario ya decidió y el contexto accesible: producto, usuarios, comportamiento actual, restricciones y código relevante. Busca los hechos que puedas comprobar; reserva las preguntas para decisiones del usuario. Una exploración pendiente no convierte una conjetura en un hecho. Si ayuda, el padre puede delegar investigación acotada sin trasladar al usuario preguntas que el proyecto permite responder.
 
 Identifica las decisiones que cambian el resultado y sus dependencias. Revisa ambos lados:

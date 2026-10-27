@@ -56,6 +56,48 @@ class ReviewBudgetTests(unittest.TestCase):
         self.assertEqual(data['used'], 3)
         self.assertNotEqual(self.call('reserve', PR, '--head', 'b' * 40)[0], 0)
 
+    def test_verify_checks_receipt_without_consuming_or_creating_state(self):
+        self.assertNotEqual(self.call('verify', PR, '--head', 'a' * 40, '--token', 'unknown')[0], 0)
+        self.assertFalse((self.repo / '.git/peqa').exists())
+        self.initialize(used=2)
+        _, reserved = self.call('reserve', PR, '--head', 'a' * 40)
+        ledger = Path(reserved['ledger'])
+        before = ledger.read_bytes()
+        for _ in range(2):
+            rc, receipt = self.call('verify', PR, '--head', 'a' * 40, '--token', reserved['token'])
+            self.assertEqual(rc, 0, receipt)
+            self.assertEqual(receipt['used'], 3)
+        self.assertEqual(ledger.read_bytes(), before)
+        self.assertNotEqual(self.call('verify', PR, '--head', 'b' * 40, '--token', reserved['token'])[0], 0)
+        self.call('finish', PR, '--token', reserved['token'], '--status', 'completed')
+        self.assertNotEqual(self.call('verify', PR, '--head', 'a' * 40, '--token', reserved['token'])[0], 0)
+
+    def test_verify_rejects_symlinked_ledger(self):
+        self.initialize()
+        ledger = self.repo / '.git/peqa/reviews/budget.json'
+        outside = self.root / 'outside.json'
+        ledger.rename(outside)
+        ledger.symlink_to(outside)
+        before = outside.read_bytes()
+        self.assertNotEqual(self.call('verify', PR, '--head', 'a' * 40, '--token', 'unknown')[0], 0)
+        self.assertEqual(outside.read_bytes(), before)
+
+    def test_claim_is_atomic_and_cannot_reuse_token_across_worktrees(self):
+        self.initialize(used=2)
+        _, reservation = self.call('reserve', PR, '--head', 'a' * 40)
+        token = reservation['token']
+        def claim(_):
+            return self.call('claim', PR, '--head', 'a' * 40, '--token', token)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            attempts = list(pool.map(claim, range(4)))
+        self.assertEqual(sum(rc == 0 for rc, _ in attempts), 1)
+        self.assertEqual(self.call('inspect', PR)[1]['used'], 3)
+        worktree = self.root / 'claim-worktree'
+        subprocess.run(['git', '-C', str(self.repo), 'worktree', 'add', '-q', '--detach', str(worktree)], check=True)
+        self.assertNotEqual(self.call('claim', PR, '--head', 'a' * 40, '--token', token, repo=worktree)[0], 0)
+        self.assertNotEqual(self.call('verify', PR, '--head', 'a' * 40, '--token', token)[0], 0)
+        self.assertEqual(self.call('finish', PR, '--token', token, '--status', 'completed')[0], 0)
+
     def test_parallel_parents_cannot_reserve_a_fourth_review(self):
         self.initialize()
         def reserve(_):

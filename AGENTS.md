@@ -19,6 +19,7 @@ Estas reglas aplican al desarrollo de este plugin. El comportamiento de cada ski
 - El informe de review usa [la plantilla consolidada](skills/peqa-revisa/references/report.md) y [seguridad por alcance](skills/peqa-revisa/references/security.md). Mantén evidencia, vigencia de fuentes y límites de atribución; una recomendación de IA no es una aprobación humana.
 - Para cambios que abarquen servicios como submódulos, sigue [el workflow del repositorio padre](references/submodules.md): reconoce los hijos, coordina desde la raíz elegida y crea los PRs de abajo hacia arriba. Para memoria de esa arquitectura, usa [el contexto del conjunto y la procedencia por repositorio](references/project-memory.md#repositorios-con-submódulos).
 - Añade scripts o agentes reutilizables cuando resuelvan una necesidad concreta. Los helpers actuales usan la biblioteca estándar de Python; justifica cualquier dependencia nueva.
+- Mantén [los validadores](references/checks-and-hooks.md) utilizables sin hooks; Codex usa avisos y ejecución directa. Los hooks no disparan agentes, pruebas o memoria automáticamente. El [registro de uso](references/usage.md) requiere opt-in por proyecto y no incluye contenido privado. Prueba sesiones concurrentes, límites, falta de capacidades y entradas inválidas cuando cambies estos helpers.
 - Escribe instrucciones propias. Cita las fuentes de los contratos y conserva las atribuciones y licencias de cualquier material reutilizado.
 
 ## Documentar y comprobar

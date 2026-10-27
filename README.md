@@ -2,7 +2,7 @@
 
 Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.7.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.8.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -92,6 +92,23 @@ Cada repositorio conserva su memoria en `.peqa/memoria`. Las notas de proyecto p
 
 Se guardan conceptos pequeños con fuente, fecha y verificación. Recuperar una nota no ejecuta sus comandos ni demuestra que siga vigente. Consulta el [formato y los límites](references/project-memory.md).
 
+## Validación y hooks opcionales
+
+El review comprueba un registro estructurado y detecta evidencia obsoleta si cambian HEAD, archivos, índice o submódulos. Una admisión atómica impide reutilizar la misma reserva de revisión entre sesiones. Los scripts funcionan por sí solos; los hooks agregan avisos o comprobaciones en el cliente.
+
+```mermaid
+flowchart TD
+    accTitle: Validadores utilizables con o sin hooks
+    accDescr: Los skills ejecutan directamente los validadores. Los hooks opcionales llaman a esos mismos scripts. Ambos reciben un resultado que distingue comprobaciones válidas y pendientes.
+    skills["Skills PEQA"] --> scripts["Validadores compartidos"]
+    hooks["Hooks opcionales"] -.-> scripts
+    scripts --> resultado["Resultado y evidencia"]
+```
+
+**Codex prioriza ejecución directa**; su adaptador de hooks es experimental y solo avisa. Claude puede activar comprobaciones de despacho y una única continuación de cierre. Instalar el plugin no configura hooks ni habilita registros. Consulta [configuración, límites y comandos](references/checks-and-hooks.md).
+
+El [registro de uso](references/usage.md) se activa por repositorio y cuenta invocaciones observadas por skill y runtime. No guarda conversaciones, código, cuentas ni rutas, y no reconstruye el uso anterior a su activación.
+
 ## Instalar
 
 Instala el plugin completo: sus skills comparten referencias y scripts. Una instalación sirve para distintos proyectos.
@@ -129,6 +146,7 @@ También puedes sustituir `peqa-ai/peqa-workflows` por una ruta local en `market
 
 - Cliente con acceso al proyecto y herramientas de preguntas y subagentes cuando correspondan.
 - Python 3.10+ para los scripts. La memoria requiere shell local y **macOS/Linux**; Windows queda pendiente.
+- Los validadores, hooks y registro de uso también requieren **macOS/Linux**. La carga real de hooks en cada cliente debe comprobarse antes de depender de ella; la ruta directa permanece disponible.
 - El plugin no incluye modelos ni credenciales, ni depende de TStack.
 - Pendiente: validación integral de instalación y coordinación entre sesiones reales.
 

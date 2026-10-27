@@ -9,6 +9,8 @@ Recupera contexto del proyecto elegido para el trabajo actual. La extracción es
 
 ## Recuperar
 
+Puedes consultar el estado del [registro opcional de uso](../../references/usage.md). Esta extracción sigue siendo de solo lectura: no registra eventos salvo que exista autorización separada para esa escritura; si no la hay, omite el registro.
+
 1. Identifica el proyecto actual desde el host. Si hay varios candidatos sin elección clara, pregunta con [la interfaz del entorno](../../references/runtime-tools.md#preguntas-al-usuario). Lee [formato y helper](../../references/project-memory.md); resuelve su ubicación desde el plugin instalado y pasa `--repo` explícito. Si hay submódulos, aplica [memoria de la arquitectura](../../references/project-memory.md#repositorios-con-submódulos): recupera la relación padre/hijos pertinente, contrástala sin modificar Git y distingue los almacenes consultados.
 2. Lee el catálogo. Si piden todas las categorías, usa `--all` y recorre las páginas hasta terminar. Si especifican un tema, consulta categorías y palabras pertinentes, incluyendo sinónimos razonables; para una categoría conocida usa el slug exacto. Sin petición de todo ni tema, recupera lo relevante para la tarea actual. Si tampoco hay tarea, presenta el catálogo para elegir.
 3. Lee notas de alcance proyecto y de esta máquina. `--all` no incluye otras máquinas. Comprueba continuación y advertencias: una página, un filtro estrecho o un archivo ilegible no permiten afirmar que se extrajo todo. Si el contexto no alcanza, conserva catálogo y resumen por categoría con referencias, y declara qué páginas faltan.

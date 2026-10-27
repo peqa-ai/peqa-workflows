@@ -10,10 +10,14 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import sys
 import uuid
 from urllib.parse import urlsplit
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts'))
+from git_paths import GitPathError, check_git_marker
 
 LIMIT = 3
 CHANGE_ID = re.compile(r'^change-[a-z0-9][a-z0-9-]{0,79}$')
@@ -52,20 +56,43 @@ def pr_identity(value):
 
 def directory(repo):
     root = Path(repo).resolve()
-    result = subprocess.run(['git', '-C', str(root), 'rev-parse', '--git-common-dir'], capture_output=True, text=True)
+    check_git_marker(root)
+    environment = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    environment.update(GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
+    result = subprocess.run(['git', '-C', str(root), 'rev-parse', '--git-common-dir'], capture_output=True, text=True,
+                            env=environment, timeout=10)
     if result.returncode:
         raise BudgetError('GIT_REPOSITORY_REQUIRED')
     common = Path(result.stdout.strip())
     if not common.is_absolute():
         common = root / common
-    location = common.resolve() / 'peqa' / 'reviews'
-    location.mkdir(parents=True, exist_ok=True)
+    common = Path(os.path.abspath(common))
+    fd = os.open(common.anchor, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in common.parts[1:]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        for part in ('peqa', 'reviews'):
+            try:
+                os.mkdir(part, 0o700, dir_fd=fd)
+            except FileExistsError:
+                pass
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+    finally:
+        os.close(fd)
+    location = common / 'peqa' / 'reviews'
     return location
 
 
 @contextmanager
 def locked(location):
-    with (location / 'budget.lock').open('a+b') as stream:
+    fd = os.open(location / 'budget.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    with os.fdopen(fd, 'a+b') as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise BudgetError('LEDGER_INVALID')
         if os.name == 'nt':
             import msvcrt
             if stream.seek(0, 2) == 0:
@@ -120,6 +147,66 @@ def result(path, data):
     return {'ledger': str(path), 'identity': data.get('identity') if data else None, 'pr_url': data.get('pr_url') if data else None, 'initialized': data is not None, 'used': used, 'remaining': max(0, LIMIT - used), 'limit': LIMIT, 'over_budget': used > LIMIT, 'passes': data['passes'] if data else []}
 
 
+def verify(args, requested, number):
+    """Inspect an existing reservation without creating, reserving or refunding state."""
+    if not args.token or not args.head:
+        raise BudgetError('TOKEN_AND_HEAD_REQUIRED')
+    root = Path(args.repo).resolve()
+    check_git_marker(root)
+    environment = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    environment.update(GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
+    proc = subprocess.run(['git', '-C', str(root), 'rev-parse', '--git-common-dir'],
+                          capture_output=True, text=True, timeout=10, env=environment)
+    if proc.returncode:
+        raise BudgetError('GIT_REPOSITORY_REQUIRED')
+    common = Path(proc.stdout.strip())
+    common = Path(os.path.abspath(common if common.is_absolute() else root / common))
+    fd = os.open(common.anchor, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for component in common.parts[1:]:
+            child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        for component in ('peqa', 'reviews'):
+            child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        source = os.open('budget.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+        with os.fdopen(source, 'rb') as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise BudgetError('LEDGER_INVALID')
+            raw = stream.read(1048577)
+            if len(raw) > 1048576:
+                raise BudgetError('LEDGER_TOO_LARGE')
+            database = json.loads(raw)
+    except FileNotFoundError:
+        raise BudgetError('LEDGER_UNINITIALIZED') from None
+    finally:
+        os.close(fd)
+    if not isinstance(database, dict) or database.get('schema') != 1 or not isinstance(database.get('entries'), dict):
+        raise BudgetError('LEDGER_INVALID')
+    entries = database['entries']
+    if number and ('pr-' + number) in entries:
+        legacy, _ = resolve(entries, 'pr-' + number)
+        if not legacy.startswith('pr-url-'):
+            raise BudgetError('LEGACY_PR_ASSOCIATION_REQUIRED')
+    _, data = resolve(entries, requested)
+    if data is None:
+        raise BudgetError('LEDGER_UNINITIALIZED')
+    if len(data['passes']) > LIMIT:
+        raise BudgetError('BUDGET_EXHAUSTED')
+    review = next((p for p in data['passes'] if p['token'] == args.token), None)
+    if review is None:
+        raise BudgetError('UNKNOWN_RESERVATION')
+    if review.get('status') != 'reserved':
+        raise BudgetError('RESERVATION_NOT_PENDING')
+    if review.get('dispatch_claimed_at'):
+        raise BudgetError('RESERVATION_ALREADY_DISPATCHED')
+    if review.get('head') != args.head:
+        raise BudgetError('RESERVATION_HEAD_MISMATCH')
+    return {'valid': True, 'identity': data['identity'], 'used': len(data['passes']), 'limit': LIMIT}
+
+
 def run(args):
     if args.pr_url:
         requested, pr_url, number = pr_identity(args.pr_url)
@@ -129,10 +216,23 @@ def run(args):
         requested, pr_url, number = args.id, None, None
     if args.action in ('attach', 'migrate') and not pr_url:
         raise BudgetError('PR_URL_REQUIRED')
+    if args.action == 'verify':
+        return verify(args, requested, number)
     location = directory(args.repo)
     with locked(location):
         path = location / 'budget.json'
-        database = json.loads(path.read_text()) if path.exists() else {'schema': 1, 'entries': {}}
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        except FileNotFoundError:
+            database = {'schema': 1, 'entries': {}}
+        else:
+            with os.fdopen(fd, 'rb') as stream:
+                if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                    raise BudgetError('LEDGER_INVALID')
+                raw = stream.read(1048577)
+                if len(raw) > 1048576:
+                    raise BudgetError('LEDGER_TOO_LARGE')
+                database = json.loads(raw)
         if database.get('schema') != 1 or not isinstance(database.get('entries'), dict):
             raise BudgetError('LEDGER_INVALID')
         entries = database['entries']
@@ -173,6 +273,21 @@ def run(args):
             return result(path, data)
         if data is None:
             raise BudgetError('LEDGER_UNINITIALIZED')
+        if args.action == 'claim':
+            review = next((p for p in data['passes'] if p['token'] == args.token), None)
+            if review is None:
+                raise BudgetError('UNKNOWN_RESERVATION')
+            if len(data['passes']) > LIMIT:
+                raise BudgetError('BUDGET_EXHAUSTED')
+            if review.get('status') != 'reserved':
+                raise BudgetError('RESERVATION_NOT_PENDING')
+            if review.get('dispatch_claimed_at'):
+                raise BudgetError('RESERVATION_ALREADY_DISPATCHED')
+            if not args.head or review.get('head') != args.head:
+                raise BudgetError('RESERVATION_HEAD_MISMATCH')
+            review['dispatch_claimed_at'] = now()
+            save(path, database)
+            return {'valid': True, 'identity': data['identity'], 'used': len(data['passes']), 'limit': LIMIT}
         if args.action == 'reserve':
             if len(data['passes']) >= LIMIT:
                 raise BudgetError('BUDGET_EXHAUSTED')
@@ -211,7 +326,7 @@ def run(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['inspect', 'init', 'reserve', 'finish', 'attach', 'migrate'])
+    parser.add_argument('action', choices=['inspect', 'init', 'reserve', 'claim', 'finish', 'attach', 'migrate', 'verify'])
     parser.add_argument('--repo', required=True)
     identity = parser.add_mutually_exclusive_group(required=True)
     identity.add_argument('--id', help='Stable local change label: change-feature')
@@ -226,8 +341,8 @@ def main():
         parser.error('finish requires --token and --status')
     try:
         print(json.dumps(run(args), ensure_ascii=False))
-    except (BudgetError, OSError, ValueError) as exc:
-        error = str(exc) if isinstance(exc, BudgetError) else type(exc).__name__
+    except (BudgetError, GitPathError, OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError, subprocess.TimeoutExpired) as exc:
+        error = str(exc) if isinstance(exc, (BudgetError, GitPathError)) else type(exc).__name__
         print(json.dumps({'error': error, 'limit': LIMIT}))
         return 2
     return 0

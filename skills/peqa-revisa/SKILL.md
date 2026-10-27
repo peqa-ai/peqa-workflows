@@ -11,9 +11,11 @@ Revisión adversarial por defecto: un revisor independiente intenta refutar que 
 
 Completa la comprobación de capacidades antes de reservar. La reserva marca el inicio del intento; desde ese momento se conserva su consumo aunque falle la admisión o se cancele el envío. No hay reembolsos de pasadas.
 
+Consulta el estado del [registro opcional de uso](../../references/usage.md) sin activarlo. Si el usuario ya lo habilitó y el entorno permite escribir, registra esta invocación con su ID y resultado.
+
 ## Contrato y presupuesto
 
-El padre fija objetivo original, alcance, base, revisión exacta, requisitos y resultados de checks. Identifica el PR por su URL completa: host, repositorio destino y número; un número solo no basta entre forks. Consulta el registro del PR o del cambio previo a su creación y reserva una pasada antes de iniciar al revisor. Usa el [controlador de presupuesto](references/budget.md), que comparte estado entre worktrees locales. Conserva el registro en los handoffs. Un historial desconocido no equivale a cero.
+El padre fija objetivo original, alcance, base, revisión exacta, requisitos y resultados de checks. Identifica el PR por su URL completa: host, repositorio destino y número; un número solo no basta entre forks. Consulta el registro del PR o del cambio previo a su creación, reserva una pasada y admite su despacho una única vez con `claim`, según el [controlador de presupuesto](references/budget.md), que comparte estado entre worktrees locales. Conserva el registro en los handoffs. Un historial desconocido no equivale a cero.
 
 En toda revisión, aplica [pruebas y blast radius](references/validation.md): descubre los tests disponibles, haz que el padre ejecute los pertinentes y evalúa consumidores, datos e integración afectados. Si hay submódulos, carga [revisión del conjunto](../../references/submodules.md#revisar-el-conjunto); el diff del padre no sustituye los diffs y la evidencia de sus hijos.
 
@@ -31,6 +33,6 @@ Si ya se usaron tres pasadas, el padre verifica los cambios y ejecuta checks per
 
 ## Entrega
 
-El padre entrega el [informe consolidado](references/report.md) con recomendación y evaluación de mínimos en la parte superior, en el idioma del usuario. Incluye atribución de IA, alcance, hallazgos materiales, decisiones del padre, evidencia de pruebas y seguridad por repositorio, blast radius con cobertura pendiente, revisión cubierta, modelo/esfuerzo solicitados y efectivos, ruta, fallback si lo hubo y contador `CR n/3` por PR. Declara qué comportamiento se comprobó y qué sigue sin comprobar; tests ausentes, bloqueados o fallidos no se presentan como aprobados.
+El padre valida el registro y su captura mediante [comprobaciones portables](../../references/checks-and-hooks.md) y entrega el [informe consolidado](references/report.md) con recomendación y evaluación de mínimos en la parte superior, en el idioma del usuario. Los hooks son opcionales; en Codex prioriza la ejecución directa. Incluye atribución de IA, alcance, hallazgos materiales, decisiones del padre, evidencia de pruebas y seguridad por repositorio, blast radius con cobertura pendiente, revisión cubierta, modelo/esfuerzo solicitados y efectivos, ruta, fallback si lo hubo y contador `CR n/3` por PR. Declara qué comportamiento se comprobó y qué sigue sin comprobar; tests ausentes, bloqueados o fallidos no se presentan como aprobados.
 
 Los resultados permanecen en el informe y registro local. Este skill no publica comentarios ni reviews en GitHub, incluidos comentarios de seguimiento o respuestas a bots. Las correcciones cosméticas, de formato o documentación sin cambio de comportamiento no disparan otra pasada.

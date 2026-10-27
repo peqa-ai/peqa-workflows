@@ -12,12 +12,16 @@ Usa la ruta absoluta del helper incluida en esta instalación:
 python3 "$REVIEW_BUDGET_SCRIPT" inspect --repo "$REVIEW_REPO" --pr-url "$REVIEW_PR_URL"
 python3 "$REVIEW_BUDGET_SCRIPT" init --repo "$REVIEW_REPO" --pr-url "$REVIEW_PR_URL" --prior-used 0
 python3 "$REVIEW_BUDGET_SCRIPT" reserve --repo "$REVIEW_REPO" --pr-url "$REVIEW_PR_URL" --head "$REVIEW_HEAD"
+python3 "$REVIEW_BUDGET_SCRIPT" verify --repo "$REVIEW_REPO" --pr-url "$REVIEW_PR_URL" --head "$REVIEW_HEAD" --token "$REVIEW_TOKEN"
+python3 "$REVIEW_BUDGET_SCRIPT" claim --repo "$REVIEW_REPO" --pr-url "$REVIEW_PR_URL" --head "$REVIEW_HEAD" --token "$REVIEW_TOKEN"
 python3 "$REVIEW_BUDGET_SCRIPT" finish --repo "$REVIEW_REPO" --pr-url "$REVIEW_PR_URL" --token "$REVIEW_TOKEN" --status completed
 ```
 
 `REVIEW_BUDGET_SCRIPT` apunta a `scripts/review_budget.py` de este skill. `REVIEW_PR_URL` es la URL web HTTPS completa, por ejemplo `https://github.com/equipo/proyecto/pull/42`. El helper acepta ese formato también en hosts GitHub Enterprise; normaliza host, propietario/repositorio, puerto HTTPS por defecto y slash final, y descarta query/fragment. Guarda la URL canónica y deriva una identidad con SHA-256. Hosts o repositorios distintos mantienen contadores distintos. Otros formatos de proveedor requieren un adaptador antes de usar este controlador; no los reduzcas a un número.
 
 La inicialización requiere un conteo anterior verificado. Usa cero únicamente si sabes que todavía no se inició ninguna revisión de ese cambio. Los estados `failed` y `cancelled` conservan el consumo de la reserva.
+
+Antes de enviar al revisor, `verify` comprueba el recibo sin escribir; `claim` admite un único despacho de ese token de forma atómica. Ninguno reserva otra pasada. Un token ya admitido no se puede reutilizar en otra sesión o worktree. Si usas el guard de [hooks opcionales](../../../references/checks-and-hooks.md#presupuesto-antes-de-despachar), él realiza `claim`; la ruta directa, preferida en Codex, lo ejecuta antes de llamar a la herramienta. No realices ambas admisiones. Un fallo no devuelve la reserva y `finish` conserva su consumo.
 
 Antes de crear el PR usa una identidad estable como `change-feature`. Cuando exista el PR, inicializa su identidad con el historial de revisiones propias de ese PR y une los registros para conservar ambos consumos:
 

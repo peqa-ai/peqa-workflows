@@ -9,6 +9,8 @@ Guarda conceptos pequeños que otra sesión necesite recuperar. El plugin es reu
 
 ## Seleccionar lo que vale recordar
 
+Consulta el estado del [registro opcional de uso](../../references/usage.md) sin activarlo. Si el usuario ya lo habilitó y el entorno permite escribir, registra esta invocación con su ID y resultado.
+
 Lee la petición y lo discutido. Conserva decisiones duraderas, convenciones, razones no evidentes y rutas operativas específicas. Un concepto por nota; agrupa solo lo inseparable. Descarta planes de tareas, specs, transcripciones y resultados temporales que el código o las herramientas actuales permiten obtener fácilmente.
 
 Separa hechos observados, decisiones confirmadas por el usuario e información sin verificar. Incluye procedencia accesible, entorno y cuándo habrá que comprobarla de nuevo. No completes lagunas con cuentas, rutas o infraestructura imaginadas.

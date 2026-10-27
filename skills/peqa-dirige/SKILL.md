@@ -11,6 +11,8 @@ Si recibiste una tarea delegada, cumple ese encargo y devuelve evidencia al padr
 
 ## Dirigir el cambio
 
+Consulta el estado del [registro opcional de uso](../../references/usage.md) sin activarlo. Si el usuario ya lo habilitó y el entorno permite escribir, registra esta invocación con su ID y resultado.
+
 Antes de asignar o editar, ejecuta [descubrimiento y coordinación](references/coordination.md): identifica sesiones pertinentes, lee su alcance y acuerda el reparto cuando haya recursos compartidos. Conserva esa situación en el brief; revalídala si cambian alcance, checkout o servicio. Un listado vacío, un mensaje enviado o el silencio no prueban exclusividad.
 
 Si hay servicios organizados como Git submodules o el checkout pertenece a un padre, lee [trabajo desde el repositorio padre](../../references/submodules.md). Recomienda abrir la raíz del conjunto, identifica hijos y dependencias antes de dividir el trabajo y respeta el alcance elegido por el usuario.
