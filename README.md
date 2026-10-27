@@ -1,85 +1,108 @@
 # PEQA workflows
 
-Plugin de cinco skills originales para **Codex y Claude Code**, reutilizable por cualquier persona y proyecto. T3 Code tiene una integración preferente cuando está disponible; fuera de T3 se usan las herramientas nativas del cliente. El plugin no depende de skills ni scripts de TStack.
+Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-Versión `0.3.0`, borrador público para revisión manual. Repositorio: [peqa-ai/peqa-workflows](https://github.com/peqa-ai/peqa-workflows). La publicación no instala ni activa el plugin en los clientes.
+`0.3.0` · Borrador público para revisión manual · Licencia pendiente
 
-| Skill | Función |
-| --- | --- |
-| [peqa-dirige](skills/peqa-dirige/SKILL.md) | El padre descubre sesiones pertinentes, coordina recursos y subagentes, integra y verifica. Puede llamar a idea y revisa. |
-| [peqa-revisa](skills/peqa-revisa/SKILL.md) | Revisión adversarial, Sol 6.1/xhigh preferido y máximo tres ejecuciones por PR. |
-| [peqa-idea](skills/peqa-idea/SKILL.md) | Decisiones de producto e implementación, recomendaciones contextuales y máximo tres rondas. |
-| [memoria-recuerda](skills/memoria-recuerda/SKILL.md) | Guarda conceptos pequeños y duraderos del proyecto con procedencia. |
-| [memoria-extraer](skills/memoria-extraer/SKILL.md) | Recupera todas las categorías o un tema, con referencias y verificación registrada. |
+## Cómo se reparte el trabajo
 
-`peqa-revisa` es el nombre canónico; la mención inicial de `peqa-review` se resuelve aquí. El paquete mantiene cinco entradas.
+`peqa-dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos.
 
-## Instalar y reutilizar
+```mermaid
+flowchart TD
+    accTitle: Coordinación de una implementación con PEQA
+    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar peqa-idea para decisiones y peqa-revisa para una revisión independiente. Ambos devuelven sus resultados al padre, que conserva la responsabilidad de entregar.
 
-La unidad de distribución es **el plugin completo**. Sus skills comparten referencias y un helper; copiar solo una carpeta de skill perdería esos recursos. La instalación puede servir a todos los proyectos del usuario. El directorio de trabajo, sus cuentas, infraestructura, instrucciones y memorias se resuelven en cada uso, sin rutas personales incorporadas.
+    dirige["peqa-dirige<br/>Coordina el trabajo"]
+    idea["peqa-idea<br/>Hasta 3 rondas"]
+    agentes["Subagentes<br/>Implementan por partes"]
+    padre["El padre<br/>Integra y verifica"]
+    revisa["peqa-revisa<br/>Máx. 3 por PR"]
+    entrega["Entrega<br/>Cambios y evidencia"]
 
-Para probar una copia descargada en Claude Code sin instalarla globalmente:
-
-```sh
-claude --plugin-dir /ruta/al/peqa-workflows
+    dirige -. "Si hace falta" .-> idea
+    idea -. "Decisión" .-> dirige
+    dirige --> agentes --> padre --> entrega
+    padre -. "Si corresponde" .-> revisa
+    revisa -. "Hallazgos" .-> padre
 ```
 
-Para instalarla desde GitHub en Claude Code:
+Las consultas punteadas se usan cuando aportan al trabajo. También puedes invocar cada skill por separado.
+
+- `peqa-idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
+- `peqa-revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
+- Los workflows y swarms se usan cuando tú los eliges. La ejecución normal utiliza subagentes.
+
+En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/peqa-dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/peqa-revisa/references/budget.md).
+
+## Qué le puedes pedir
+
+| Skill | Ejemplo |
+| --- | --- |
+| [peqa-dirige](skills/peqa-dirige/SKILL.md) | "Implementa este cambio y coordina a los agentes". |
+| [peqa-idea](skills/peqa-idea/SKILL.md) | "Cuestiona esta idea, también desde la implementación". |
+| [peqa-revisa](skills/peqa-revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
+| [memoria-recuerda](skills/memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
+| [memoria-extraer](skills/memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
+
+## Memoria entre sesiones
+
+Guardas conceptos concretos cuando lo pides. Una sesión posterior puede recuperar todo o filtrar por tema.
+
+```mermaid
+flowchart TD
+    accTitle: Memoria del proyecto entre dos sesiones
+    accDescr: A petición del usuario, memoria-recuerda guarda notas con procedencia en el proyecto. En otra sesión, memoria-extraer consulta ese almacén y devuelve notas y fuentes sin modificarlas.
+
+    actual["memoria-recuerda<br/>Sesión actual"]
+    memoria[(".peqa/memoria<br/>Notas con procedencia")]
+    nueva["memoria-extraer<br/>Nueva sesión"]
+
+    actual -->|Pides guardar| memoria
+    memoria -->|Pides recuperar| nueva
+```
+
+Cada repositorio conserva su memoria en `.peqa/memoria`. Las notas de proyecto pueden compartirse por Git; las de máquina, como una identidad local de GitHub, se ignoran. Se reutiliza `.peqa-stack/memoria` si ya es el único almacén existente.
+
+Se guardan conceptos pequeños con fuente, fecha y verificación. Recuperar una nota no ejecuta sus comandos ni demuestra que siga vigente. Consulta el [formato y los límites](references/project-memory.md).
+
+## Instalar
+
+Instala el plugin completo: sus skills comparten referencias y scripts. Una instalación sirve para distintos proyectos.
+
+**Claude Code**
 
 ```sh
 claude plugin marketplace add peqa-ai/peqa-workflows
 claude plugin install peqa-workflows@peqa --scope user
 ```
 
-En Codex CLI con soporte para plugins:
+**Codex CLI con soporte para plugins**
 
 ```sh
 codex plugin marketplace add peqa-ai/peqa-workflows
 codex plugin add peqa-workflows@peqa
 ```
 
-Los catálogos incluidos `.claude-plugin/marketplace.json` y `.agents/plugins/marketplace.json` apuntan al paquete con rutas relativas. El manifiesto portable `plugin.json` y los dos manifiestos de compatibilidad conservan nombre y versión. Para registrar una copia local, sustituye `peqa-ai/peqa-workflows` por su ruta en el comando `marketplace add`. Los comandos anteriores son instrucciones de instalación: no se han ejecutado sobre la configuración del usuario durante la creación del borrador. Inicia una nueva sesión tras instalar y selecciona el skill del plugin con la sintaxis que muestre el cliente; en Claude Code, por ejemplo, `/peqa-workflows:peqa-dirige`.
+Inicia una nueva sesión y selecciona el skill. En Claude Code, por ejemplo: `/peqa-workflows:peqa-dirige`.
 
-La licencia de distribución está pendiente de la elección del autor. El borrador aún no tiene licencia declarada ni se afirma aprobación de ningún directorio oficial. La instalación integral entre clientes sigue pendiente de validación.
+<details>
+<summary>Probar una copia local sin instalarla globalmente</summary>
 
-## Cómo trabaja
-
-El soporte del stack se concentra en T3 Code, Codex y Claude Code. Antes de implementar, `peqa-dirige` descubre agentes/sesiones visibles, lee el alcance de candidatos pertinentes y comunica qué archivos o recursos compartidos tocará. Negocia un editor o un orden de integración, recibe riesgos de los demás y avisa ante cambios materiales o cierre. La [referencia de coordinación](skills/peqa-dirige/references/coordination.md) distingue mensajería entre sesiones de la coordinación de hijos, así como visibilidad parcial de ausencia de trabajo concurrente.
-
-El padre conserva la responsabilidad por la entrega y adjudica hallazgos con evidencia. Los hijos reciben encargos delimitados y no crean nuevas cadenas de coordinadores. Los workflows y swarms se sugieren cuando aportan un beneficio concreto y se usan si el usuario los elige.
-
-Las preguntas nuevas utilizan la interfaz del proveedor. En T3, las preguntas existentes de hijos se leen y responden con `t3_pending_request`. El ciclo de delegación, cancelación y PRs está en una única [referencia de herramientas](references/runtime-tools.md), contrastada contra un commit de T3; el esquema vivo y las reglas del host prevalecen.
-
-La revisión prefiere exactamente `gpt-6.1-sol` con `xhigh`. En T3 usa su catálogo y ruta de orquestación. Fuera, usa selección nativa o un Codex CLI ya autenticado desde un padre Claude. Si no está disponible, el diseño autoriza un subagente fresco del motor actual, declarado como fallback. No instala proveedores, inicia logins ni cambia credenciales. Los revisores responden al padre y no publican comentarios ni reviews en GitHub.
-
-El [controlador de presupuesto](skills/peqa-revisa/references/budget.md) conserva un máximo total de tres revisiones independientes por PR, incluyendo fallos, cancelaciones y rechecks. Comparte contador entre worktrees; clones independientes necesitan importar historia verificada. La tercera pasada no constituye aprobación automática. `peqa-idea` mantiene su contador por iniciativa entre sesiones y agentes.
-
-## Memoria por proyecto
-
-La instalación del plugin contiene instrucciones y scripts. Cada proyecto conserva sus propios datos:
-
-```text
-cualquier-proyecto/.peqa/memoria/
-  project/<categoria>/<concepto>.md
-  local/<maquina>/<categoria>/<concepto>.md
+```sh
+claude --plugin-dir /ruta/al/peqa-workflows
 ```
 
-Se reutiliza `.peqa-stack/memoria` si es el único almacén existente. La memoria de proyecto puede compartirse deliberadamente mediante Git; la memoria de máquina se ignora. Guardar no hace commits ni publica datos. Cada nota conserva fuente, fechas, entorno y verificación. No se ha identificado todavía una referencia concreta para el nombre OKF; el formato actual es Markdown con metadata JSON.
+También puedes sustituir `peqa-ai/peqa-workflows` por una ruta local en `marketplace add`.
 
-Ejemplos de petición, aplicables a cualquier repositorio:
-
-- «Recuerda la convención que decidimos para desplegar este servicio».
-- «Guarda como memoria de esta máquina qué identidad debe firmar los commits aquí».
-- «Extrae todas las categorías de memoria de este proyecto».
-- «Recupera solo lo relacionado con DevOps para el trabajo de hoy».
-
-La extracción es de solo lectura. Una nota no prueba que una cuenta siga autenticada, no ejecuta comandos anotados ni autoriza despliegues. El helper excluye otras máquinas al recuperar y exige el SHA leído antes de cambiar una nota existente. Consulta [formato, comandos y límites](references/project-memory.md).
+</details>
 
 ## Requisitos y validación
 
-Los flujos requieren las herramientas que exponga el cliente: acceso al proyecto, preguntas y subagentes cuando corresponda. El plugin no incluye modelos, credenciales, MCP propio, hooks ni servidores. La ruta Codex CLI para revisión es opcional; su falta permite el fallback descrito.
-
-Los helpers requieren Python 3.10+. **El helper de memoria funciona actualmente en macOS/Linux**: usa operaciones POSIX para bloqueo y protección de rutas; Windows falla con un mensaje claro y queda pendiente. Guardar y recuperar requieren shell local, por lo que estas funciones no son flujos exclusivos de un chat sin acceso a archivos. Los skills de dirigir, revisar e idea no dependen de un proyecto o sistema operativo concreto.
+- Cliente con acceso al proyecto y herramientas de preguntas y subagentes cuando correspondan.
+- Python 3.10+ para los scripts. La memoria requiere shell local y **macOS/Linux**; Windows queda pendiente.
+- El plugin no incluye modelos ni credenciales, ni depende de TStack.
+- Pendientes: licencia de distribución y validación integral de instalación y coordinación entre sesiones reales.
 
 Desde la raíz del plugin:
 
@@ -87,10 +110,8 @@ Desde la raíz del plugin:
 python3 -m unittest discover -s tests -v
 ```
 
-Las pruebas usan datos sintéticos y repositorios temporales. La validación de instrucciones y la prueba previa de un Codex CLI se conservan fuera del plugin, en la carpeta de validación de esta sesión. No prueban por sí solas la instalación y ejecución integral en todos los clientes o sistemas operativos.
+Las pruebas usan repositorios temporales y datos sintéticos.
 
 ## Fuentes
 
-La entrevista por decisiones reconoce la referencia conceptual de [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias, con tres rondas y atención al producto y la implementación. La integración T3 cita sus fuentes en [runtime-tools.md](references/runtime-tools.md).
-
-El empaquetado sigue la [documentación oficial de plugins de OpenAI](https://developers.openai.com/plugins/build/plugins) y la [referencia de plugins de Claude Code](https://code.claude.com/docs/en/plugins-reference). Las opciones de instalación se contrastaron con las ayudas locales de los clientes. La revisión CLI se contrastó con [ejecución no interactiva de Codex](https://learn.chatgpt.com/docs/non-interactive-mode) y Codex CLI 0.164.0.
+La entrevista toma como referencia conceptual a [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias. El empaquetado sigue las referencias de [OpenAI](https://developers.openai.com/plugins/build/plugins) y [Claude Code](https://code.claude.com/docs/en/plugins-reference); los contratos de T3 se citan en [herramientas del entorno](references/runtime-tools.md).
