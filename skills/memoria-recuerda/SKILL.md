@@ -1,5 +1,5 @@
 ---
-name: peqa-memoria-recuerda
+name: memoria-recuerda
 description: Save or update small, durable project memories when the user asks to remember session decisions, conventions or operational context for future sessions. Use for project knowledge, not specifications, task plans or full transcripts.
 ---
 

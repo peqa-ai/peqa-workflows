@@ -9,7 +9,7 @@ Cuando una arquitectura agrupa servicios como Git submodules, recomienda abrir e
 3. Conserva en el brief un mapa de los repositorios pertinentes: ruta relativa, padre inmediato, servicio/contratos, instrucciones aplicables, rama y SHA de trabajo, base y repositorio destino del PR. Resuelve remotos reales, incluidas URLs relativas y forks; elimina credenciales de cualquier URL que muestres. Comprueba la identidad Git/GitHub aplicable a cada repositorio.
 4. Para un hijo necesario que falte, inicializa el commit fijado solo cuando el encargo y el entorno permitan esa escritura y descarga. Inspecciona primero cambios locales y checkouts compartidos. La forma habitual es `git submodule update --init --checkout --recursive -- <ruta>` desde su padre. No uses `--remote` para actualizar dependencias incidentalmente, ni fuerces, resetees o guardes en stash trabajo ajeno. La extracción de memoria sigue siendo de solo lectura.
 
-Antes de delegar, aplica [coordinación entre sesiones](../skills/peqa-dirige/references/coordination.md) a los checkouts, contratos y recursos compartidos de los hijos. Delimita el repositorio y archivos de cada agente. El agente padre conserva la vista del conjunto. Un worktree del padre puede tener hijos sin inicializar; verifica el estado del checkout que realmente usará el agente y respeta el aislamiento provisto por el host.
+Antes de delegar, aplica [coordinación entre sesiones](../skills/dirige/references/coordination.md) a los checkouts, contratos y recursos compartidos de los hijos. Delimita el repositorio y archivos de cada agente. El agente padre conserva la vista del conjunto. Un worktree del padre puede tener hijos sin inicializar; verifica el estado del checkout que realmente usará el agente y respeta el aislamiento provisto por el host.
 
 ## Crear PRs desde los hijos hacia el padre
 
@@ -25,9 +25,9 @@ Si falta acceso a un hijo, falla su publicación o no puede resolverse un SHA, e
 
 ## Revisar el conjunto
 
-Identifica cada PR por URL completa y conserva su contador en el repositorio correspondiente, según [presupuesto de revisión](../skills/peqa-revisa/references/budget.md). El máximo es tres por PR. Si un encargo independiente emite veredictos sobre varios PRs, comprueba y reserva una pasada para cada uno antes de despacharlo. Un PR agotado o de historial desconocido no se vuelve a revisar ocultándolo dentro del PR padre. El contexto de otro repositorio no equivale a haberlo revisado.
+Identifica cada PR por URL completa y conserva su contador en el repositorio correspondiente, según [presupuesto de revisión](../skills/revisa/references/budget.md). El máximo es tres por PR. Si un encargo independiente emite veredictos sobre varios PRs, comprueba y reserva una pasada para cada uno antes de despacharlo. Un PR agotado o de historial desconocido no se vuelve a revisar ocultándolo dentro del PR padre. El contexto de otro repositorio no equivale a haberlo revisado.
 
-La revisión del padre comprueba los punteros y la compatibilidad de la combinación, además de sus archivos propios. No trata una actualización de gitlink como un cambio trivial de una línea: inspecciona el rango de commits incluido en el hijo y sus contratos afectados. Si faltan objetos o fuentes, declara cobertura parcial. Selecciona pruebas por impacto siguiendo [pruebas y blast radius](../skills/peqa-revisa/references/validation.md).
+La revisión del padre comprueba los punteros y la compatibilidad de la combinación, además de sus archivos propios. No trata una actualización de gitlink como un cambio trivial de una línea: inspecciona el rango de commits incluido en el hijo y sus contratos afectados. Si faltan objetos o fuentes, declara cobertura parcial. Selecciona pruebas por impacto siguiendo [pruebas y blast radius](../skills/revisa/references/validation.md).
 
 ## Memoria de la arquitectura
 

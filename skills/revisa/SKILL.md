@@ -1,6 +1,6 @@
 ---
-name: peqa-revisa
-description: Use when independent code review is requested, peqa-dirige reaches a review gate, or fixes on an existing PR need adversarial rechecking within its remaining review budget.
+name: revisa
+description: Use when independent code review is requested, dirige reaches a review gate, or fixes on an existing PR need adversarial rechecking within its remaining review budget.
 ---
 
 # PEQA revisa

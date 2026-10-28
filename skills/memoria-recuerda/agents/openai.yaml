@@ -1,4 +1,4 @@
 interface:
   display_name: "PEQA memoria recuerda"
   short_description: "Guarda conceptos duraderos del proyecto por tema"
-  default_prompt: "Usa $peqa-memoria-recuerda para guardar los conceptos importantes de esta sesión."
+  default_prompt: "Usa $memoria-recuerda para guardar los conceptos importantes de esta sesión."

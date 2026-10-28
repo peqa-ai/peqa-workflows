@@ -1,4 +1,4 @@
 interface:
   display_name: "PEQA idea"
   short_description: "Cuestiona producto e implementación en tres rondas"
-  default_prompt: "Usa $peqa-idea para cuestionar esta idea y recomendar un enfoque."
+  default_prompt: "Usa $idea para cuestionar esta idea y recomendar un enfoque."

@@ -1,4 +1,4 @@
 interface:
   display_name: "PEQA dirige"
   short_description: "Coordina implementación, subagentes y sesiones"
-  default_prompt: "Usa $peqa-dirige para coordinar e implementar este cambio."
+  default_prompt: "Usa $dirige para coordinar e implementar este cambio."

@@ -48,7 +48,7 @@ class UsageTests(unittest.TestCase):
         self.assertEqual(code, 0, result)
         return result
 
-    def record(self, invocation=None, phase="started", skill="peqa-dirige",
+    def record(self, invocation=None, phase="started", skill="dirige",
                runtime="codex", **kwargs):
         return self.invoke("record", "--invocation-id", invocation or str(uuid.uuid4()),
                            "--skill", skill, "--runtime", runtime, "--phase", phase,
@@ -112,7 +112,7 @@ class UsageTests(unittest.TestCase):
         invocation = str(uuid.uuid4())
         self.record(invocation)
         before = self.state_path.read_bytes()
-        for options in ({"skill": "peqa-idea"}, {"runtime": "claude"}):
+        for options in ({"skill": "idea"}, {"runtime": "claude"}):
             with self.subTest(options=options):
                 code, result = self.record(invocation, "completed", **options)
                 self.assertEqual(code, 2)
@@ -124,13 +124,32 @@ class UsageTests(unittest.TestCase):
         invocation = str(uuid.uuid4())
         self.record(invocation)
         self.record(invocation, "completed")
-        self.record(phase="failed", skill="peqa-idea", runtime="t3-claude")
+        self.record(phase="failed", skill="idea", runtime="t3-claude")
         result = self.ok("summary")
         self.assertEqual(result["totals"], {"started": 1, "completed": 1, "failed": 1})
         self.assertEqual(result["groups"], [
-            {"skill": "peqa-dirige", "runtime": "codex", "started": 1, "completed": 1, "failed": 0},
-            {"skill": "peqa-idea", "runtime": "t3-claude", "started": 0, "completed": 0, "failed": 1}])
+            {"skill": "dirige", "runtime": "codex", "started": 1, "completed": 1, "failed": 0},
+            {"skill": "idea", "runtime": "t3-claude", "started": 0, "completed": 0, "failed": 1}])
         self.assertNotIn("tokens", json.dumps(result))
+
+    def test_legacy_history_remains_readable_and_new_phases_use_canonical_names(self):
+        self.ok("enable")
+        invocation = str(uuid.uuid4())
+        self.record(invocation)
+        data = self.state()
+        data["events"][0]["skill"] = "peqa-dirige"
+        self.state_path.write_text(json.dumps(data))
+        before = self.state_path.read_bytes()
+        self.assertEqual(self.ok("status")["event_count"], 1)
+        self.assertEqual(self.ok("summary")["groups"][0]["skill"], "dirige")
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertEqual(self.record(invocation)[1]["status"], "duplicate")
+        self.assertEqual(self.record(invocation, "completed")[1]["status"], "recorded")
+        self.assertEqual([event["skill"] for event in self.state()["events"]],
+                         ["peqa-dirige", "dirige"])
+        group = self.ok("summary")["groups"][0]
+        self.assertEqual((group["started"], group["completed"]), (1, 1))
+        self.assertEqual(self.record(skill="peqa-dirige")[0], 2)
 
     def test_date_filter_is_inclusive_utc_and_validated(self):
         self.ok("enable")
@@ -148,8 +167,8 @@ class UsageTests(unittest.TestCase):
 
     def test_all_supported_skills_and_runtimes_are_accepted(self):
         self.ok("enable")
-        for skill in ("peqa-dirige", "peqa-idea", "peqa-revisa",
-                      "peqa-memoria-recuerda", "peqa-memoria-extraer"):
+        for skill in ("dirige", "idea", "revisa",
+                      "memoria-recuerda", "memoria-extraer"):
             for runtime in ("t3-codex", "t3-claude", "codex", "claude"):
                 self.assertEqual(self.record(skill=skill, runtime=runtime)[0], 0)
         self.assertEqual(self.ok("status")["event_count"], 20)
@@ -282,7 +301,7 @@ class UsageTests(unittest.TestCase):
             fcntl.flock(lock, fcntl.LOCK_EX)
             process = subprocess.Popen([
                 sys.executable, str(SCRIPT), "record", "--repo", str(self.repo),
-                "--skill", "peqa-dirige", "--runtime", "codex", "--phase", "started",
+                "--skill", "dirige", "--runtime", "codex", "--phase", "started",
                 "--invocation-id", str(uuid.uuid4())], stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, text=True)
             try:
@@ -371,7 +390,7 @@ class UsageTests(unittest.TestCase):
         before = self.state_path.read_bytes()
         with patch.object(module, "MAX_EVENTS", 1):
             with self.assertRaises(module.UsageError) as error:
-                module.execute("record", str(self.repo), skill="peqa-dirige", runtime="codex",
+                module.execute("record", str(self.repo), skill="dirige", runtime="codex",
                                phase="started", invocation_id=str(uuid.uuid4()))
         self.assertEqual(str(error.exception), "EVENT_LIMIT_REACHED")
         self.assertEqual(self.state_path.read_bytes(), before)

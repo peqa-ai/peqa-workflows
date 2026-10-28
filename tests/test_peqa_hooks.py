@@ -9,7 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOK = ROOT / 'scripts/peqa_hooks.py'
-BUDGET = ROOT / 'skills/peqa-revisa/scripts/review_budget.py'
+BUDGET = ROOT / 'skills/revisa/scripts/review_budget.py'
 CHECKS = ROOT / 'scripts/review_checks.py'
 PR = 'https://github.com/fixture/repo/pull/1'
 

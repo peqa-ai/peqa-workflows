@@ -1,6 +1,6 @@
 ---
-name: peqa-idea
-description: Use when an idea, feature, plan or technical approach needs challenging, product or implementation decisions are materially unresolved, or peqa-dirige needs clarification before dependent work.
+name: idea
+description: Use when an idea, feature, plan or technical approach needs challenging, product or implementation decisions are materially unresolved, or dirige needs clarification before dependent work.
 ---
 
 # PEQA idea

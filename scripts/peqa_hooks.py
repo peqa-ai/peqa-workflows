@@ -16,7 +16,7 @@ import uuid
 from git_paths import GitPathError, check_git_marker
 
 LIMIT = 1048576
-BUDGET = Path(__file__).resolve().parents[1] / 'skills/peqa-revisa/scripts/review_budget.py'
+BUDGET = Path(__file__).resolve().parents[1] / 'skills/revisa/scripts/review_budget.py'
 CHECKS = Path(__file__).with_name('review_checks.py')
 
 

@@ -1,6 +1,6 @@
 ---
-name: peqa-dirige
-description: Use when a user requests implementation coordinated through agents, explicitly invokes peqa-dirige, or asks to carry a multi-part change through integration and verification.
+name: dirige
+description: Use when a user requests implementation coordinated through agents, explicitly invokes dirige, or asks to carry a multi-part change through integration and verification.
 ---
 
 # PEQA dirige
@@ -17,11 +17,11 @@ Antes de asignar o editar, ejecuta [descubrimiento y coordinación](references/c
 
 Si hay servicios organizados como Git submodules o el checkout pertenece a un padre, lee [trabajo desde el repositorio padre](../../references/submodules.md). Recomienda abrir la raíz del conjunto, identifica hijos y dependencias antes de dividir el trabajo y respeta el alcance elegido por el usuario.
 
-1. Lee las instrucciones y el estado actual necesarios para fijar objetivo, criterios de aceptación, límites y decisiones pendientes. Resuelve hechos inspeccionando el proyecto. Cuando una decisión de producto o implementación cambie materialmente el resultado, carga `peqa-idea` mediante el mecanismo de skills disponible o lee [su entrada incluida](../peqa-idea/SKILL.md). Continúa el trabajo independiente mientras llega una respuesta necesaria.
+1. Lee las instrucciones y el estado actual necesarios para fijar objetivo, criterios de aceptación, límites y decisiones pendientes. Resuelve hechos inspeccionando el proyecto. Cuando una decisión de producto o implementación cambie materialmente el resultado, carga `idea` mediante el mecanismo de skills disponible o lee [su entrada incluida](../idea/SKILL.md). Continúa el trabajo independiente mientras llega una respuesta necesaria.
 2. Elige la ruta de ejecución descrita en [runtimes](references/runtimes.md). En T3 Code usa sus herramientas de orquestación según las reglas del host; fuera usa los subagentes nativos de Codex o Claude Code. Otro cliente queda fuera del soporte del stack. Conserva el modelo del padre para implementación salvo una preferencia explícita o una selección justificada que el entorno permita. Si no existe una ruta de subagentes en un cliente soportado, comunica la limitación y ejecuta directamente lo que el usuario autorizó.
 3. Divide por entregables y dependencias. Asigna propietario, archivos o módulo, requisitos, comandos relevantes y criterio de terminación a cada hijo. Entrega contexto mínimo y fuentes originales. Indica que comparte el código con otros y debe acomodar sus cambios. Paraleliza trabajo independiente dentro de la capacidad disponible; mantén un único editor por conjunto de archivos.
 4. El padre resuelve decisiones transversales e integra. Mantén informados a los propietarios afectados ante cambios de contrato, bloqueos o liberación del recurso; consolida novedades y evita intercambios de acuses. Lee los cambios y comprueba comportamiento y contratos entre módulos. Un informe de un hijo es una afirmación que contrastar con el código, los resultados y los requisitos. Corrige hallazgos pequeños directamente; evita nuevas delegaciones que no aporten trabajo independiente.
-5. Cuando corresponda revisión del cambio, carga `peqa-revisa` o lee [su entrada incluida](../peqa-revisa/SKILL.md). El padre mantiene el control, el presupuesto por PR y la decisión sobre cada hallazgo. La revisión no abre otra cadena de coordinadores.
+5. Cuando corresponda revisión del cambio, carga `revisa` o lee [su entrada incluida](../revisa/SKILL.md). El padre mantiene el control, el presupuesto por PR y la decisión sobre cada hallazgo. La revisión no abre otra cadena de coordinadores.
 6. Completa la entrega solicitada con pruebas pertinentes y el estado real de sus PRs. Si la entrega incluye crear PRs y hay submódulos, crea los de todos los hijos modificados y padres intermedios, y termina con el PR padre, según [el orden de PRs](../../references/submodules.md#crear-prs-desde-los-hijos-hacia-el-padre). En T3 enlaza cada PR creado o actualizado y usa su watcher si queda trabajo a la espera de checks o revisiones; entrega al usuario con el watcher retirado. Publicar, desplegar o hacer merge requiere la autorización aplicable, que puede estar ya dada. No vuelvas a pedirla si existe.
 
 ## Cuándo sugerir otro mecanismo

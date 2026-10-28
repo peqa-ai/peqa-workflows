@@ -6,18 +6,18 @@ Cinco skills para decidir, implementar con agentes, revisar y conservar contexto
 
 ## Cómo se reparte el trabajo
 
-`peqa-dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos.
+`dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos.
 
 ```mermaid
 flowchart TD
     accTitle: Coordinación de una implementación con PEQA
-    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar peqa-idea para decisiones y peqa-revisa para una revisión independiente. Ambos devuelven sus resultados al padre, que conserva la responsabilidad de entregar.
+    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones y revisa para una revisión independiente. Ambos devuelven sus resultados al padre, que conserva la responsabilidad de entregar.
 
-    dirige["peqa-dirige<br/>Coordina el trabajo"]
-    idea["peqa-idea<br/>Hasta 3 rondas"]
+    dirige["dirige<br/>Coordina el trabajo"]
+    idea["idea<br/>Hasta 3 rondas"]
     agentes["Subagentes<br/>Implementan por partes"]
     padre["El padre<br/>Integra y verifica"]
-    revisa["peqa-revisa<br/>Máx. 3 por PR"]
+    revisa["revisa<br/>Máx. 3 por PR"]
     entrega["Entrega<br/>Cambios y evidencia"]
 
     dirige -. "Si hace falta" .-> idea
@@ -29,24 +29,24 @@ flowchart TD
 
 Las consultas punteadas se usan cuando aportan al trabajo. También puedes invocar cada skill por separado.
 
-- `peqa-idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
-- `peqa-revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
-- El review busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **blast radius**: servicios, consumidores y datos que podrían verse afectados. Tests verdes en un servicio no prueban toda la integración. Consulta [pruebas e impacto](skills/peqa-revisa/references/validation.md).
-- El [informe consolidado](skills/peqa-revisa/references/report.md) abre con **aprobación sugerida, cambios requeridos o revisión incompleta** y evalúa mínimos de requisitos, pruebas, seguridad y compatibilidad. Adapta el idioma e identifica la generación por IA y al solicitante cuando se conoce.
-- La [revisión de seguridad](skills/peqa-revisa/references/security.md) contrasta versiones oficiales de OWASP Top 10 y NIST SSDF, comprueba controles pertinentes al cambio y declara los pendientes. No equivale a una certificación ni publica aprobaciones en GitHub.
+- `idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
+- `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
+- El review busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **blast radius**: servicios, consumidores y datos que podrían verse afectados. Tests verdes en un servicio no prueban toda la integración. Consulta [pruebas e impacto](skills/revisa/references/validation.md).
+- El [informe consolidado](skills/revisa/references/report.md) abre con **aprobación sugerida, cambios requeridos o revisión incompleta** y evalúa mínimos de requisitos, pruebas, seguridad y compatibilidad. Adapta el idioma e identifica la generación por IA y al solicitante cuando se conoce.
+- La [revisión de seguridad](skills/revisa/references/security.md) contrasta versiones oficiales de OWASP Top 10 y NIST SSDF, comprueba controles pertinentes al cambio y declara los pendientes. No equivale a una certificación ni publica aprobaciones en GitHub.
 - Los workflows y swarms se usan cuando tú los eliges. La ejecución normal utiliza subagentes.
 
-En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/peqa-dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/peqa-revisa/references/budget.md).
+En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/revisa/references/budget.md).
 
 ## Qué le puedes pedir
 
 | Skill | Ejemplo |
 | --- | --- |
-| [peqa-dirige](skills/peqa-dirige/SKILL.md) | "Implementa este cambio y coordina a los agentes". |
-| [peqa-idea](skills/peqa-idea/SKILL.md) | "Cuestiona esta idea, también desde la implementación". |
-| [peqa-revisa](skills/peqa-revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
-| [peqa-memoria-recuerda](skills/peqa-memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
-| [peqa-memoria-extraer](skills/peqa-memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
+| [dirige](skills/dirige/SKILL.md) | "Implementa este cambio y coordina a los agentes". |
+| [idea](skills/idea/SKILL.md) | "Cuestiona esta idea, también desde la implementación". |
+| [revisa](skills/revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
+| [memoria-recuerda](skills/memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
+| [memoria-extraer](skills/memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
 
 ## Varios servicios con Git submodules
 
@@ -78,11 +78,11 @@ Guardas conceptos concretos cuando lo pides. Una sesión posterior puede recuper
 ```mermaid
 flowchart TD
     accTitle: Memoria del proyecto entre dos sesiones
-    accDescr: A petición del usuario, peqa-memoria-recuerda guarda notas con procedencia en el proyecto. En otra sesión, peqa-memoria-extraer consulta ese almacén y devuelve notas y fuentes sin modificarlas.
+    accDescr: A petición del usuario, memoria-recuerda guarda notas con procedencia en el proyecto. En otra sesión, memoria-extraer consulta ese almacén y devuelve notas y fuentes sin modificarlas.
 
-    actual["peqa-memoria-recuerda<br/>Sesión actual"]
+    actual["memoria-recuerda<br/>Sesión actual"]
     memoria[(".peqa/memoria<br/>Notas con procedencia")]
-    nueva["peqa-memoria-extraer<br/>Nueva sesión"]
+    nueva["memoria-extraer<br/>Nueva sesión"]
 
     actual -->|Pides guardar| memoria
     memoria -->|Pides recuperar| nueva
@@ -127,9 +127,14 @@ codex plugin marketplace add peqa-ai/peqa-workflows
 codex plugin add peqa-workflows@peqa
 ```
 
-Inicia una nueva sesión y selecciona el skill. En Claude Code, por ejemplo: `/peqa-workflows:peqa-dirige`.
+Inicia una nueva sesión y selecciona el skill:
 
-Desde `0.5.0`, todos los skills usan el prefijo `peqa-`. Si vienes de una versión anterior, actualiza tus invocaciones a los nombres de la tabla. Las memorias y los contadores de revisión conservan sus rutas y datos.
+- Codex: `$peqa-workflows:dirige`.
+- Claude Code: `/peqa-workflows:dirige`.
+
+Desde la versión 0.9.0, los skills se llaman `dirige`, `idea`, `revisa`, `memoria-recuerda` y `memoria-extraer`. El namespace `peqa-workflows` ya identifica el plugin, por lo que sus nombres dejaron de repetir `peqa-`. Actualiza las invocaciones anteriores; no se instalan aliases de los nombres antiguos.
+
+Las versiones `0.5.x` a `0.8.x` usaban nombres como `peqa-dirige`; en `0.9.0` pasa a `dirige`. Las memorias y los contadores de revisión conservan sus rutas y datos. El registro opcional de uso sigue leyendo los nombres históricos y agrupa sus eventos bajo los nombres actuales.
 
 <details>
 <summary>Probar una copia local sin instalarla globalmente</summary>

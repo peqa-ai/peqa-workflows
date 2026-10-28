@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'skills/peqa-revisa/scripts/review_budget.py'
+SCRIPT = Path(__file__).resolve().parents[1] / 'skills/revisa/scripts/review_budget.py'
 PR = 'https://github.com/team/project/pull/42'
 
 

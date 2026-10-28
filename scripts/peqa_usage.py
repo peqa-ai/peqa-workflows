@@ -30,8 +30,16 @@ else:
     from git_paths import GitPathError, check_git_marker
 
 
-SKILLS = ("peqa-dirige", "peqa-idea", "peqa-revisa", "peqa-memoria-recuerda",
-          "peqa-memoria-extraer")
+SKILLS = ("dirige", "idea", "revisa", "memoria-recuerda",
+          "memoria-extraer")
+# Historical event names remain readable; new records use canonical names only.
+LEGACY_SKILLS = {"peqa-" + skill: skill for skill in SKILLS}
+
+
+def canonical_skill(skill):
+    return LEGACY_SKILLS.get(skill, skill)
+
+
 RUNTIMES = ("t3-codex", "t3-claude", "codex", "claude")
 PHASES = ("started", "completed", "failed")
 SCOPE = "observed_events_only"
@@ -223,13 +231,13 @@ def validate_state(data):
     for event in data["events"]:
         if (not isinstance(event, dict)
                 or set(event) != {"timestamp", "invocation_id", "skill", "runtime", "phase"}
-                or event["skill"] not in SKILLS or event["runtime"] not in RUNTIMES
+                or canonical_skill(event["skill"]) not in SKILLS or event["runtime"] not in RUNTIMES
                 or event["phase"] not in PHASES or not isinstance(event["timestamp"], str)
                 or not TIMESTAMP_PATTERN.fullmatch(event["timestamp"])):
             raise ValueError("Invalid event")
         datetime.strptime(event["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ")
         invocation = random_id(event["invocation_id"])
-        identity = (event["skill"], event["runtime"])
+        identity = (canonical_skill(event["skill"]), event["runtime"])
         if identities.setdefault(invocation, identity) != identity:
             raise ValueError("Inconsistent identity")
         key = (invocation, event["phase"])
@@ -282,7 +290,7 @@ def summarize(data, since):
     for event in data["events"] if data else ():
         if since is not None and event["timestamp"][:10] < since:
             continue
-        key = (event["skill"], event["runtime"])
+        key = (canonical_skill(event["skill"]), event["runtime"])
         group = groups.setdefault(key, {"skill": key[0], "runtime": key[1],
                                          **{phase: 0 for phase in PHASES}})
         group[event["phase"]] += 1
@@ -321,7 +329,7 @@ def execute(action, repo, *, skill=None, runtime=None, phase=None, invocation_id
                 for event in data["events"]:
                     if event["invocation_id"] != invocation_id:
                         continue
-                    if (event["skill"], event["runtime"]) != (skill, runtime):
+                    if (canonical_skill(event["skill"]), event["runtime"]) != (skill, runtime):
                         raise UsageError("INVOCATION_MISMATCH")
                     if event["phase"] == phase:
                         return {"status": "duplicate"}

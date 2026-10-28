@@ -25,7 +25,7 @@ Completa el JSON con evidencia observada y decisiones del padre. Usa `en` para i
 - `criteria`: `requirements`, `tests`, `security`, `compatibility`; cada uno tiene `status` y `evidence`. Los estados añaden `not_applicable`, que necesita justificación.
 - `findings`: objetos con `id`, `material`, `status` (`open`, `resolved`, `dismissed`) y `evidence`.
 - `tests`: objetos con `command`, `cwd` relativo al proyecto, `status` (`passed`, `failed`, `not_run`, `partial`, `no_tests`) y `evidence`. Incluye resultados y pendientes relevantes.
-- `security`: listas de texto `standards`, `controls`, `limitations`, con versiones, IDs, resultados y fuentes según [seguridad del review](../skills/peqa-revisa/references/security.md).
+- `security`: listas de texto `standards`, `controls`, `limitations`, con versiones, IDs, resultados y fuentes según [seguridad del review](../skills/revisa/references/security.md).
 - `trace`: listas de texto `models` y `cr`, y texto `route`; distingue configuración solicitada y efectiva, contador por PR y sus fuentes.
 - `scope`: captura generada por el helper. Conserva este objeto junto a la evidencia que se obtuvo sobre ese estado.
 
@@ -36,7 +36,7 @@ python3 "$PEQA_PLUGIN/scripts/review_checks.py" validate --repo "$PEQA_REPO" --r
 python3 "$PEQA_PLUGIN/scripts/review_checks.py" render --repo "$PEQA_REPO" --report "$PEQA_REPORT"
 ```
 
-`validate` devuelve `valid` y códigos de error; exit 0 significa registro coherente y vigente, no aprobación. Un informe que requiere cambios o declara revisión incompleta también puede ser válido. `render` valida antes de producir el [consolidado](../skills/peqa-revisa/references/report.md), conservando la recomendación y sus límites. Entrega ese resultado o adapta su presentación manteniendo los mismos datos.
+`validate` devuelve `valid` y códigos de error; exit 0 significa registro coherente y vigente, no aprobación. Un informe que requiere cambios o declara revisión incompleta también puede ser válido. `render` valida antes de producir el [consolidado](../skills/revisa/references/report.md), conservando la recomendación y sus límites. Entrega ese resultado o adapta su presentación manteniendo los mismos datos.
 
 La captura compara HEAD, índice, archivos rastreados y no rastreados, y submódulos anidados con sus punteros y HEAD reales. Usa hashes; no imprime contenidos. Al terminar vuelve a comprobar enumeraciones, estados Git e identidades de archivos y repositorios, incluidos hijos ya recorridos; si detecta una edición durante la lectura devuelve `SNAPSHOT_CHANGED_DURING_READ`. No bloquea a otros procesos ni garantiza una captura atómica del sistema de archivos: coordina las escrituras y valida de nuevo antes de usar el informe. Submódulos ausentes, archivos inseguros o límites de lectura dejan cobertura incompleta. No inicializa hijos ni ejecuta los comandos declarados en el informe. Archivos ignorados por Git y repositorios externos están fuera de la captura: si afectan a las pruebas, conserva su evidencia aparte y declara esa limitación material. Para otros repositorios independientes usa un registro por raíz y consolida sus resultados.
 
@@ -44,12 +44,12 @@ Si cambia la captura, el registro queda obsoleto. No reemplaces `scope` para con
 
 ## Presupuesto antes de despachar
 
-Después de reservar una única vez con [el controlador existente](../skills/peqa-revisa/references/budget.md), verifica el recibo inmediatamente antes de despachar:
+Después de reservar una única vez con [el controlador existente](../skills/revisa/references/budget.md), verifica el recibo inmediatamente antes de despachar:
 
 ```sh
-python3 "$PEQA_PLUGIN/skills/peqa-revisa/scripts/review_budget.py" verify \
+python3 "$PEQA_PLUGIN/skills/revisa/scripts/review_budget.py" verify \
   --repo "$PEQA_REPO" --pr-url "$PEQA_PR_URL" --head "$PEQA_HEAD" --token "$PEQA_TOKEN"
-python3 "$PEQA_PLUGIN/skills/peqa-revisa/scripts/review_budget.py" claim \
+python3 "$PEQA_PLUGIN/skills/revisa/scripts/review_budget.py" claim \
   --repo "$PEQA_REPO" --pr-url "$PEQA_PR_URL" --head "$PEQA_HEAD" --token "$PEQA_TOKEN"
 ```
 
