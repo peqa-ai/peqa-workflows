@@ -17,6 +17,9 @@ Pruebas de comportamiento de `memoria-recuerda`, no tests de un recolector ejecu
 | Rama local existente | La rama `memoria/` del PR existe en local y está atrasada | Crear el worktree sin `-b` y avanzar con `--ff-only`; ante divergencia, detenerse |
 | PR con archivos ajenos | El PR de memoria también toca código | No retomarlo; abrir un PR propio que lo enlace |
 | Índice del usuario | El checkout tiene cambios en stage | Comprobar el stage con `git -C` en el worktree; la rama y el stage del usuario quedan intactos |
+| Orden de los contextos | El worktree temporal aún no existe | Ejecutar los pasos 1 a 3 con `git -C` en la raíz del proyecto y el resto en el worktree |
+| Rama ocupada o divergente | Otro worktree usa la rama `memoria/`, o local y remota tienen commits distintos | Detenerse e informar, sin reset ni push |
+| PR no retomable | La base no es la rama principal, o el PR viene de un fork | Abrir un PR propio que enlace los relacionados |
 
 ## Control previo
 
@@ -48,4 +51,6 @@ Se corrigieron resolviendo una sola vez remoto, almacén y rama, y usando `git -
 
 Un agente con contexto fresco aplicó el texto corregido a esos casos con `upstream`, `trunk` y `.peqa-stack`. Retomó el PR válido sin `-b` y rechazó el que tenía código.
 
-Los 107 tests existentes pasan; el helper no cambió. Se comprobaron enlaces, anclas y `git diff --check`. El paso de `gh` no se ejecutó en los repositorios temporales.
+La comprobación posterior (CR 2/3) dio M1–M5 por resueltos y encontró N1: la regla general pedía `git -C "$MEMORIA_TMP"` también en los pasos que se ejecutan antes de crear ese worktree. Se corrigió: los pasos 1 a 3 usan la raíz del proyecto. En repositorios temporales, la lectura literal anterior falló con «cannot change to …», y la corregida creó el worktree. Una rama ocupada y una divergente detuvieron el flujo sin cambiar la rama local ni la remota. Otro agente con contexto fresco rechazó retomar un PR con otra base y otro desde un fork, y abrió uno propio que los enlaza. La corrección de N1 no tuvo una tercera revisión independiente.
+
+Los 107 tests existentes pasan; el helper no cambió. Se comprobaron enlaces, anclas y `git diff --check`. Los pasos de `gh` solo se ejecutaron de verdad en el PR #3; en los repositorios temporales no hubo `gh`.
