@@ -25,6 +25,6 @@ Elige `project` para conocimiento compartible del proyecto y `machine` para cuen
 4. Ejecuta `save` con `--repo` explícito y cuerpo desde un archivo temporal acotado. Para actualizar usa `--expected-sha` de la lectura. Ante conflicto, relee y reconcilia; no fuerces sobrescritura ni cambies de ID para ocultarlo. Comprueba el resultado y lee la nota guardada.
 5. Abre el PR de memoria con las notas `project` según [compartir por PR](../../references/project-memory.md#compartir-notas-de-proyecto-por-pr). Si no puede abrirse, guarda en el checkout actual e informa el motivo.
 
-Las notas de máquina quedan ignoradas por Git. El PR solo contiene `.peqa/memoria` y queda abierto para que una persona lo mezcle. Si falta el runtime del helper, informa que no se pudo persistir y entrega las notas propuestas; no afirmes que se guardaron.
+Las notas de máquina quedan ignoradas por Git. El PR solo contiene el almacén de memoria y queda abierto para que una persona lo mezcle. Si falta el runtime del helper, informa que no se pudo persistir y entrega las notas propuestas; no afirmes que se guardaron.
 
 Al terminar informa notas creadas, actualizadas o sin cambios, ubicación, alcance, URL y estado del PR, y conflictos o datos pendientes. Evita reproducir cuentas y rutas de máquina en resúmenes compartidos sin necesidad.

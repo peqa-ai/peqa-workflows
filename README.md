@@ -117,7 +117,7 @@ flowchart TD
     accDescr: A petición del usuario, memoria-recuerda guarda las notas de proyecto en un PR propio desde la rama principal y las de máquina en el checkout actual. Cuando una persona mezcla el PR, las notas llegan al almacén de la rama principal, que memoria-extraer consulta en otra sesión sin modificarlo.
 
     actual["memoria-recuerda<br/>Sesión actual"]
-    pr["PR de memoria<br/>Solo .peqa/memoria"]
+    pr["PR de memoria<br/>Solo el almacén de memoria"]
     local[("Notas de máquina<br/>Checkout actual, ignoradas")]
     memoria[(".peqa/memoria<br/>Rama principal")]
     nueva["memoria-extraer<br/>Nueva sesión"]
