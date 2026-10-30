@@ -15,7 +15,7 @@ El helper elige `.peqa/memoria`. Si solo existe `.peqa-stack/memoria`, lo reutil
   local/<maquina>/<categoria>/<id>.md
 ```
 
-`project` contiene contexto compartible. `local` contiene contexto de esta máquina: por ejemplo, qué identidad local debería firmar commits o qué perfil CLI se usó. Un repositorio público también publicaría las notas `project` que su propietario decida confirmar: revisa su contenido con ese destino en mente. El helper mantiene `/local/` y `/.lock` al final del `.gitignore` del almacén y rechaza guardar sobre una nota local ya rastreada. No hace `git add`, commit, push ni cambios de configuración.
+`project` contiene contexto compartible. `local` contiene contexto de esta máquina: por ejemplo, qué identidad local debería firmar commits o qué perfil CLI se usó. Un repositorio público también publicaría las notas `project` que su propietario decida confirmar: revisa su contenido con ese destino en mente. El helper mantiene `/local/` y `/.lock` al final del `.gitignore` del almacén y rechaza guardar sobre una nota local ya rastreada. No hace `git add`, commit, push ni cambios de configuración; `memoria-recuerda` comparte las notas `project` mediante [un PR propio](#compartir-notas-de-proyecto-por-pr).
 
 `--all` incluye proyecto y máquina actual, nunca otras máquinas. El ID predeterminado es un hash aproximado de hostname y nodo de red; puede cambiar. `--machine` fija un slug elegido por el usuario cuando necesite estabilidad. No selecciones otra máquina solo para hacer aparecer resultados.
 
@@ -77,3 +77,19 @@ Para contexto local cambia a `--scope machine`; `--environment`, `--recheck` y `
 `save` devuelve `created`, `updated` o `unchanged`, ruta y SHA. Para cambiar una nota repite sus campos y añade `--expected-sha` obtenido al leerla. Un contenido idéntico no cambia bytes ni timestamps. Un SHA obsoleto falla, incluso con contenido idéntico: relee y reconcilia. El helper serializa escrituras entre procesos y sustituye archivos atómicamente.
 
 La detección de secretos es heurística: puede rechazar ejemplos con asignaciones y no detecta todos los secretos. Revisa tú el contenido. Ante un rechazo, corrige el dato; no desactives el filtro ni pases el secreto por otro campo. Si no hay runtime compatible, entrega la propuesta y declara que no se persistió.
+
+## Compartir notas de proyecto por PR
+
+`memoria-recuerda` comparte las notas `project` en un PR propio, abierto desde la rama principal remota. Pedir que recuerde autoriza la rama, el commit, el push y el PR; el merge lo decide una persona. Las notas `machine` se guardan en el checkout actual y quedan fuera del PR.
+
+1. Comprueba que el proyecto es un repositorio Git con remoto en GitHub y `gh` autenticado. Resuelve la rama principal con `gh repo view --json defaultBranchRef` y ejecuta `git fetch`.
+2. Revisa los PRs abiertos con `gh pr list --state open --json number,url,headRefName,files`. Si una rama `memoria/` de este repositorio ya toca el mismo concepto, crea el worktree del paso 3 desde esa rama remota y actualiza su PR en lugar de abrir otro. Un PR que viene de un fork no admite tu push: abre uno propio y enlázalo en la descripción.
+3. Crea un worktree temporal fuera del árbol de trabajo: `git worktree add -b "memoria/$TEMA" "$MEMORIA_TMP" "origin/$RAMA_PRINCIPAL"`. Con `dirige`, anótalo en [el registro de recursos](../skills/dirige/references/cleanup.md).
+4. Cataloga, lee y guarda con `--repo "$MEMORIA_TMP"`: ese checkout refleja la memoria compartida. Revisa cada nota pensando en quien leerá el repositorio, sin rutas ni cuentas de esta máquina.
+5. Ejecuta `git -C "$MEMORIA_TMP" add .peqa/memoria`. Comprueba con `git diff --cached --name-only` que solo aparecen notas de `.peqa/memoria/project` y el `.gitignore` del almacén, y crea el commit.
+6. Haz push de la rama y abre el PR contra la rama principal. La descripción lista cada nota con título, categoría, fuente y verificación, y aclara que son datos de contexto que no autorizan acciones. En T3, enlaza el PR.
+7. Comprueba con `git ls-remote` que la rama remota apunta al commit y retira el worktree con `git worktree remove "$MEMORIA_TMP"`. La rama local se conserva.
+
+Si falta Git, el remoto en GitHub, `gh` o permiso de push, guarda en el checkout actual e informa por qué no hay PR.
+
+Las notas aparecen al extraer desde la rama principal una vez mezclado el PR y actualizado el checkout. Git rechaza esa actualización si encuentra en el checkout un archivo sin rastrear en la misma ruta, aunque su contenido sea idéntico. Pasa con el `.gitignore` del almacén cuando ya había notas de máquina: retira esa copia sin rastrear antes de actualizar, siempre que coincida con la versión de la rama principal.
