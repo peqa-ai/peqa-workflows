@@ -16,7 +16,7 @@ La evaluación global es `no cumple` si hay un incumplimiento material demostrad
 | Cambios requeridos | Changes required | Incumplimiento material demostrado. Incluye también las comprobaciones pendientes, si las hay. |
 | Revisión incompleta | Review incomplete | Falta evidencia, acceso o una revisión independiente necesaria para decidir; no se ha demostrado un incumplimiento que ya exija cambios. |
 
-Aplica los criterios de [pruebas e impacto](validation.md). Los tests fallidos o las carencias materiales impiden sugerir aprobación. El encabezado expresa una recomendación de IA; no afirma una aprobación humana ni registra un evento `APPROVE` en GitHub. Este formato conserva la política de entrega local del skill.
+Aplica los criterios de [pruebas e impacto](validation.md). Los tests fallidos o las carencias materiales impiden sugerir aprobación. El encabezado expresa una recomendación de IA; no afirma una aprobación humana ni registra un evento `APPROVE` en GitHub.
 
 Si hay varios PRs, muestra el estado y revisión exacta de cada uno. El consolidado exige cambios si alguno tiene un incumplimiento material; en ausencia de estos, queda incompleto si falta cobertura material en cualquier componente requerido. Un hijo aprobado no vuelve aprobado al conjunto.
 
@@ -40,7 +40,8 @@ Usa el idioma de la conversación o del informe solicitado. Adapta Markdown a te
 | Compatibilidad e impacto | {estado} | {consumidores, contratos e incertidumbre} |
 
 ## Hallazgos y decisiones
-{Defectos materiales, evidencia, decisión del padre y corrección mínima; o ninguno encontrado dentro del alcance.}
+{Diagrama antes/después del cambio, si modifica comportamiento.}
+{Defectos materiales, evidencia, decisión del padre y corrección mínima, cada uno con su screenshot o diagrama; o ninguno encontrado dentro del alcance.}
 
 ## Pruebas, seguridad e impacto
 {Resultados por repositorio, matriz de seguridad, blast radius y limitaciones según las referencias del skill.}
@@ -52,3 +53,15 @@ Usa el idioma de la conversación o del informe solicitado. Adapta Markdown a te
 Resuelve la persona solicitante desde su indicación explícita o una identidad de sesión verificada. No la deduzcas del autor del PR, del último commit, de `git user.name` o de la cuenta CLI autenticada. Si no está identificada, usa `Generado por IA. Persona solicitante no identificada.` y continúa. La atribución identifica quién pidió el informe, no quién lo aprobó. En inglés usa `Consolidated review` y `AI-generated on behalf of …`, con el mismo criterio de identidad.
 
 Sustituye todos los campos antes de entregar. Mantén el resumen breve y enlaza evidencia extensa; conserva los fallos y límites aunque el cliente solo admita texto plano.
+
+El render del helper escapa el Markdown de los campos del registro. Inserta la [evidencia visual](../../../references/visual-evidence.md#en-el-review) en el Markdown renderizado: el diagrama del cambio al inicio de «Hallazgos y decisiones» y cada imagen o diagrama debajo de su hallazgo, identificado por su ID. El resto del texto queda igual.
+
+## Publicar en el PR
+
+El consolidado se entrega primero en la sesión. Si corresponde a un PR identificado por URL, pregunta al entregarlo si el usuario quiere publicarlo como comentario de ese PR, salvo que ya lo haya indicado. Usa [la interfaz de preguntas](../../../references/runtime-tools.md#preguntas-al-usuario). Es una autorización: no consume rondas de `idea` ni pasadas de revisión. Sin un sí explícito, el informe queda en local.
+
+1. Prepara el texto con el destino en mente. Publica el consolidado ya adjudicado, con encabezado, atribución y evidencia visual. En un repositorio público, describe un hallazgo de seguridad explotable sin detalles de explotación y propón al usuario un canal privado, como un aviso de seguridad del repositorio.
+2. Publícalo con `gh pr comment "$PR_URL" --body-file "$INFORME"` y un `--attach` por imagen, según [evidencia visual en el PR](../../../references/visual-evidence.md#en-el-pr). El comentario expresa una recomendación de IA; la aprobación o la petición formal de cambios en GitHub corresponden a una persona.
+3. Comprueba que el comentario existe, muestra las imágenes y no contiene rutas locales. Entrega su URL.
+
+Ofrece de nuevo la publicación con cada consolidado posterior del mismo PR, salvo que el usuario haya pedido publicarlos todos. Responder otros comentarios o bots es un encargo aparte.

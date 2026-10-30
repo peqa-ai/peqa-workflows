@@ -2,7 +2,7 @@
 
 Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.10.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.11.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -30,7 +30,7 @@ flowchart TD
 Las consultas punteadas se usan cuando aportan al trabajo. También puedes invocar cada skill por separado.
 
 - `idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
-- `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. No publica comentarios en GitHub.
+- `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. Al entregar el informe de un PR te ofrece publicarlo como comentario; solo lo publica si aceptas.
 - El review busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **blast radius**: servicios, consumidores y datos que podrían verse afectados. Tests verdes en un servicio no prueban toda la integración. Consulta [pruebas e impacto](skills/revisa/references/validation.md).
 - El [informe consolidado](skills/revisa/references/report.md) abre con **aprobación sugerida, cambios requeridos o revisión incompleta** y evalúa mínimos de requisitos, pruebas, seguridad y compatibilidad. Adapta el idioma e identifica la generación por IA y al solicitante cuando se conoce.
 - La [revisión de seguridad](skills/revisa/references/security.md) contrasta versiones oficiales de OWASP Top 10 y NIST SSDF, comprueba controles pertinentes al cambio y declara los pendientes. No equivale a una certificación ni publica aprobaciones en GitHub.
@@ -47,6 +47,34 @@ En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entor
 | [revisa](skills/revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
 | [memoria-recuerda](skills/memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
 | [memoria-extraer](skills/memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
+
+## Evidencia visual
+
+Desde `0.11.0`, `dirige` y `revisa` acompañan cada cambio con evidencia visual: screenshots si cambia la interfaz y un diagrama antes/después si cambia el comportamiento sin interfaz. Se muestra en la sesión, va en la descripción del PR y acompaña los hallazgos del review.
+
+```mermaid
+flowchart TD
+    accTitle: Evidencia visual según el tipo de cambio
+    accDescr: Un cambio de interfaz se acompaña con screenshots y uno de comportamiento sin interfaz con un diagrama antes y después. La evidencia se muestra en la sesión, se adjunta al PR y acompaña los hallazgos del review, que se publica como comentario solo si aceptas.
+
+    cambio["Cambio comprobado"]
+    ui["Interfaz visible<br/>Screenshots"]
+    back["Comportamiento sin interfaz<br/>Diagrama antes/después"]
+    sesion["Sesión"]
+    pr["Descripción del PR"]
+    review["Review<br/>Publicación si aceptas"]
+
+    cambio --> ui & back
+    ui & back --> sesion & pr & review
+```
+
+- Los screenshots se toman con las herramientas disponibles, como Playwright, las pruebas E2E del proyecto o un simulador, usando datos de prueba. En T3 Code se ven dentro de la conversación; en la terminal recibes la ruta del archivo.
+- Las imágenes se suben al PR con `gh pr create`, `gh pr edit` o `gh pr comment` y la opción `--attach`, disponible desde `gh` 2.99.0. Con una versión anterior quedan en local y el agente lo indica. Una imagen subida no puede borrarse, así que se revisa antes de subirla.
+- Los diagramas usan Mermaid, que GitHub dibuja en PRs y comentarios.
+- El review publicado es un comentario con una recomendación de IA. Aprobar o pedir cambios en GitHub sigue siendo una decisión tuya.
+- Documentación, formato, renombres o versiones de dependencias se explican con texto.
+
+[Formato, fuentes y límites](references/visual-evidence.md).
 
 ## Limpieza al terminar
 
