@@ -54,13 +54,13 @@ Resuelve la persona solicitante desde su indicación explícita o una identidad 
 
 Sustituye todos los campos antes de entregar. Mantén el resumen breve y enlaza evidencia extensa; conserva los fallos y límites aunque el cliente solo admita texto plano.
 
-El render del helper escapa el Markdown de los campos del registro. Inserta la [evidencia visual](../../../references/visual-evidence.md#en-el-review) en el Markdown renderizado: el diagrama del cambio al inicio de «Hallazgos y decisiones» y cada imagen o diagrama debajo de su hallazgo, identificado por su ID. El resto del texto queda igual.
+El render del helper escapa el Markdown de los campos del registro. Inserta la [evidencia visual](../../../references/visual-evidence.md#en-el-review) en el Markdown renderizado: el diagrama del cambio al inicio de «Hallazgos y decisiones» y cada imagen o diagrama debajo de su hallazgo, identificado por su ID. El resto del texto queda igual; la copia publicable solo cambia lo que indica [Publicar en el PR](#publicar-en-el-pr).
 
 ## Publicar en el PR
 
 El consolidado se entrega primero en la sesión. Si corresponde a un PR identificado por URL, pregunta al entregarlo si el usuario quiere publicarlo como comentario de ese PR, salvo que ya lo haya indicado. Usa [la interfaz de preguntas](../../../references/runtime-tools.md#preguntas-al-usuario). Es una autorización: no consume rondas de `idea` ni pasadas de revisión. Sin un sí explícito, el informe queda en local.
 
-1. Prepara el texto con el destino en mente. Publica el consolidado ya adjudicado, con encabezado, atribución y evidencia visual. En un repositorio público, describe un hallazgo de seguridad explotable sin detalles de explotación y propón al usuario un canal privado, como un aviso de seguridad del repositorio.
+1. Prepara una copia publicable del consolidado ya adjudicado. Conserva encabezado, atribución, recomendación, mínimos, hallazgos, decisiones y evidencia técnica y visual. En «Alcance», sustituye la raíz local que escribe el render por la URL del PR y las revisiones base y head. En un repositorio público, describe un hallazgo de seguridad explotable sin detalles de explotación y propón al usuario un canal privado, como un aviso de seguridad del repositorio.
 2. Publícalo con `gh pr comment "$PR_URL" --body-file "$INFORME"` y un `--attach` por imagen, según [evidencia visual en el PR](../../../references/visual-evidence.md#en-el-pr). El comentario expresa una recomendación de IA; la aprobación o la petición formal de cambios en GitHub corresponden a una persona.
 3. Comprueba que el comentario existe, muestra las imágenes y no contiene rutas locales. Entrega su URL.
 
