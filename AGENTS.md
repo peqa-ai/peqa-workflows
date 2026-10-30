@@ -7,7 +7,7 @@ Estas reglas aplican al desarrollo de este plugin. El comportamiento de cada ski
 - Los skills usan nombres en minúsculas separados por guiones, sin repetir el prefijo del plugin `peqa-workflows`. Ejemplos: `dirige`, `memoria-recuerda`, `memoria-extraer`.
 - La carpeta `skills/<nombre>/` y el campo `name` de `SKILL.md` deben coincidir. Mantén el mismo nombre en invocaciones, enlaces, diagramas y `agents/openai.yaml`; su `default_prompt` referencia `$<nombre>`.
 - Al renombrar, actualiza también los consumidores de scripts y los ejemplos de instalación. Evita registrar entradas duplicadas como aliases. Explica los cambios de comandos en el README.
-- Conserva nombre, versión y licencia coherentes en los tres manifiestos del plugin. Aumenta la versión cuando cambie el paquete instalable; un cambio de nombres de skills en la serie `0.x` aumenta la versión menor.
+- Conserva nombre, versión y licencia coherentes en los tres manifiestos del plugin. Aumenta la versión cuando cambie el paquete instalable; un cambio de nombres de skills en la serie `0.x` aumenta la versión menor. Un PR que solo toca `.peqa/memoria` no cambia los skills y no sube la versión.
 - El prefijo de skills no determina las rutas de datos. Conserva `.peqa/memoria`, `.peqa-stack/memoria` y el registro de revisiones; cambiar esos contratos requiere una migración explícita.
 
 ## Escribir skills

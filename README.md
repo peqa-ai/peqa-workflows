@@ -2,7 +2,7 @@
 
 Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.11.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.12.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -109,22 +109,26 @@ Cuando pidas guardar memoria de esta arquitectura, se conserva en el padre el co
 
 ## Memoria entre sesiones
 
-Guardas conceptos concretos cuando lo pides. Una sesión posterior puede recuperar todo o filtrar por tema.
+Guardas conceptos concretos cuando lo pides. Desde `0.12.0`, `memoria-recuerda` abre en ese momento un PR con las notas de proyecto nuevas o modificadas. Una sesión posterior puede recuperar todo o filtrar por tema.
 
 ```mermaid
 flowchart TD
     accTitle: Memoria del proyecto entre dos sesiones
-    accDescr: A petición del usuario, memoria-recuerda guarda notas con procedencia en el proyecto. En otra sesión, memoria-extraer consulta ese almacén y devuelve notas y fuentes sin modificarlas.
+    accDescr: A petición del usuario, memoria-recuerda guarda las notas de proyecto en un PR propio desde la rama principal y las de máquina en el checkout actual. Cuando una persona mezcla el PR, las notas llegan al almacén de la rama principal, que memoria-extraer consulta en otra sesión sin modificarlo.
 
     actual["memoria-recuerda<br/>Sesión actual"]
-    memoria[(".peqa/memoria<br/>Notas con procedencia")]
+    pr["PR de memoria<br/>Solo el almacén de memoria"]
+    local[("Notas de máquina<br/>Checkout actual, ignoradas")]
+    memoria[(".peqa/memoria<br/>Rama principal")]
     nueva["memoria-extraer<br/>Nueva sesión"]
 
-    actual -->|Pides guardar| memoria
+    actual -->|Notas de proyecto| pr
+    actual -->|Notas de máquina| local
+    pr -->|Lo mezcla una persona| memoria
     memoria -->|Pides recuperar| nueva
 ```
 
-Cada repositorio conserva su memoria en `.peqa/memoria`. Las notas de proyecto pueden compartirse por Git; las de máquina, como una identidad local de GitHub, se ignoran. Se reutiliza `.peqa-stack/memoria` si ya es el único almacén existente.
+Cada repositorio conserva su memoria en `.peqa/memoria`. Las notas de proyecto llegan a la rama principal mediante su PR; mientras no se mezcle, el PR muestra qué se va a recordar. Las de máquina, como una identidad local de GitHub, quedan en tu checkout y Git las ignora. Si el repositorio no tiene remoto en GitHub o falta `gh`, la nota se guarda en local y el agente lo indica. Se reutiliza `.peqa-stack/memoria` si ya es el único almacén existente.
 
 Se guardan conceptos pequeños con fuente, fecha y verificación. Recuperar una nota no ejecuta sus comandos ni demuestra que siga vigente. Consulta el [formato y los límites](references/project-memory.md).
 
