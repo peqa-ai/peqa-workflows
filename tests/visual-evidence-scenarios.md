@@ -27,4 +27,8 @@ Tres agentes con contexto fresco cubrieron los siete casos. Siguieron las instru
 
 Se corrigieron haciendo la sección condicional y nombrando las herramientas de captura en positivo. Un cuarto agente con contexto fresco repitió ambos casos: omitió la sección en el PR trivial y capturó con Playwright.
 
-Los 107 tests existentes pasan; no ejecutan estas instrucciones. Se comprobaron enlaces relativos, anclas y `git diff --check`. El comportamiento de `--attach` procede de la ayuda de `gh` 2.102.0, sus notas de versión y su código fuente; no se subió ninguna imagen. Queda pendiente una prueba de extremo a extremo con un PR desechable en cada cliente.
+Los 107 tests existentes pasan; no ejecutan estas instrucciones. Se comprobaron enlaces relativos, anclas y `git diff --check`.
+
+La revisión independiente (CR 1/3) encontró V1: el render del helper escribe la ruta absoluta del checkout en «Alcance», y la búsqueda de rutas locales ocurría después de publicar. La corrección añade una copia publicable que sustituye esa ruta por la URL del PR y las revisiones, y adelanta la búsqueda. Un agente con contexto fresco, ante un informe sintético con una ruta privada, la sustituyó y buscó rutas antes y después de enviar, sin publicar.
+
+Prueba real de `--attach` con `gh` 2.102.0 en el PR del cambio: una imagen sintética de un solo color, referenciada en el cuerpo con la misma ruta absoluta que `--attach`. El comentario quedó con una URL `user-attachments`, el texto alternativo intacto y ninguna ruta local, y GitHub mostró la imagen. Siguen sin probarse los fallos parciales de subida y una ejecución de extremo a extremo en cada cliente.
