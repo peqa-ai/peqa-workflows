@@ -1,6 +1,6 @@
 # Registro de uso opcional
 
-Registra únicamente invocaciones observadas de los cinco skills PEQA. El usuario activa este registro explícitamente por repositorio; instalar el plugin o guardar memoria no lo activa. No es telemetría remota ni una auditoría de otros plugins.
+Registra únicamente invocaciones observadas de los seis skills PEQA. El usuario activa este registro explícitamente por repositorio; instalar el plugin o guardar memoria no lo activa. No es telemetría remota ni una auditoría de otros plugins.
 
 ```sh
 python3 "$PEQA_PLUGIN/scripts/peqa_usage.py" enable --repo "$PEQA_REPO"

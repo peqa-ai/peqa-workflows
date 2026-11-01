@@ -151,6 +151,15 @@ class UsageTests(unittest.TestCase):
         self.assertEqual((group["started"], group["completed"]), (1, 1))
         self.assertEqual(self.record(skill="peqa-dirige")[0], 2)
 
+    def test_skills_added_after_the_rename_have_no_legacy_name(self):
+        self.ok("enable")
+        self.record(skill="ui-design")
+        data = self.state()
+        data["events"][0]["skill"] = "peqa-ui-design"
+        self.state_path.write_text(json.dumps(data))
+        self.assertEqual(self.invoke("status")[0], 2)
+        self.assertEqual(self.record(skill="peqa-ui-design")[0], 2)
+
     def test_date_filter_is_inclusive_utc_and_validated(self):
         self.ok("enable")
         self.record()
@@ -168,10 +177,10 @@ class UsageTests(unittest.TestCase):
     def test_all_supported_skills_and_runtimes_are_accepted(self):
         self.ok("enable")
         for skill in ("dirige", "idea", "revisa",
-                      "memoria-recuerda", "memoria-extraer"):
+                      "memoria-recuerda", "memoria-extraer", "ui-design"):
             for runtime in ("t3-codex", "t3-claude", "codex", "claude"):
                 self.assertEqual(self.record(skill=skill, runtime=runtime)[0], 0)
-        self.assertEqual(self.ok("status")["event_count"], 20)
+        self.assertEqual(self.ok("status")["event_count"], 24)
 
     def test_invalid_input_cannot_persist_or_echo_private_values(self):
         for options in ({"invocation": "secret-account-session"},

@@ -1,0 +1,4 @@
+interface:
+  display_name: "PEQA ui design"
+  short_description: "Diseña interfaces desde el sistema de diseño del proyecto"
+  default_prompt: "Usa $ui-design para diseñar esta interfaz desde el sistema de diseño del proyecto."

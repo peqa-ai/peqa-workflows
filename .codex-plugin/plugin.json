@@ -1,7 +1,7 @@
 {
   "name": "peqa-workflows",
-  "version": "0.12.0",
-  "description": "Dirige, revisa, idea y recuerda: cinco skills reutilizables en cualquier proyecto.",
+  "version": "0.13.0",
+  "description": "Dirige, revisa, idea, diseña y recuerda: seis skills reutilizables en cualquier proyecto.",
   "license": "MIT",
   "author": {
     "name": "PEQA"
@@ -9,7 +9,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "PEQA workflows",
-    "shortDescription": "Dirige, revisa, idea y recuerda en cualquier proyecto",
+    "shortDescription": "Dirige, revisa, idea, diseña y recuerda en cualquier proyecto",
     "developerName": "PEQA"
   }
 }
