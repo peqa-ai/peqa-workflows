@@ -1,8 +1,8 @@
 # PEQA workflows
 
-Cinco skills para decidir, implementar con agentes, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
+Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.12.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.13.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -11,10 +11,11 @@ Cinco skills para decidir, implementar con agentes, revisar y conservar contexto
 ```mermaid
 flowchart TD
     accTitle: Coordinación de una implementación con PEQA
-    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones y revisa para una revisión independiente. Ambos devuelven sus resultados al padre, que conserva la responsabilidad de entregar.
+    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones, fijar con ui-design la dirección visual antes de repartir trabajo de interfaz y pedir a revisa una revisión independiente. Los resultados vuelven al padre, que conserva la responsabilidad de entregar.
 
     dirige["dirige<br/>Coordina el trabajo"]
     idea["idea<br/>Hasta 3 rondas"]
+    ui["ui-design<br/>Dirección visual y sistema"]
     agentes["Subagentes<br/>Implementan por partes"]
     padre["El padre<br/>Integra y verifica"]
     revisa["revisa<br/>Máx. 3 por PR"]
@@ -22,6 +23,8 @@ flowchart TD
 
     dirige -. "Si hace falta" .-> idea
     idea -. "Decisión" .-> dirige
+    dirige -. "Si hay interfaz" .-> ui
+    ui -. "Plan e inventario" .-> agentes
     dirige --> agentes --> padre --> entrega
     padre -. "Si corresponde" .-> revisa
     revisa -. "Hallazgos" .-> padre
@@ -30,6 +33,7 @@ flowchart TD
 Las consultas punteadas se usan cuando aportan al trabajo. También puedes invocar cada skill por separado.
 
 - `idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
+- Cuando el cambio construye o rediseña interfaz, el padre fija con `ui-design` la dirección visual y el inventario del sistema de diseño antes de repartir. Tokens, tema y componentes compartidos tienen un solo propietario, y cada hijo construye desde ese plan. Consulta [diseño de interfaces](#diseño-de-interfaces).
 - `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. Al entregar el informe de un PR te ofrece publicarlo como comentario; solo lo publica si aceptas.
 - El review busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **blast radius**: servicios, consumidores y datos que podrían verse afectados. Tests verdes en un servicio no prueban toda la integración. Consulta [pruebas e impacto](skills/revisa/references/validation.md).
 - El [informe consolidado](skills/revisa/references/report.md) abre con **aprobación sugerida, cambios requeridos o revisión incompleta** y evalúa mínimos de requisitos, pruebas, seguridad y compatibilidad. Adapta el idioma e identifica la generación por IA y al solicitante cuando se conoce.
@@ -44,9 +48,42 @@ En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entor
 | --- | --- |
 | [dirige](skills/dirige/SKILL.md) | "Implementa este cambio y coordina a los agentes". |
 | [idea](skills/idea/SKILL.md) | "Cuestiona esta idea, también desde la implementación". |
+| [ui-design](skills/ui-design/SKILL.md) | "Diseña la página de precios con los componentes que ya tenemos". |
 | [revisa](skills/revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
 | [memoria-recuerda](skills/memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
 | [memoria-extraer](skills/memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
+
+## Diseño de interfaces
+
+Desde `0.13.0`, `ui-design` construye o rediseña interfaces web desde el sistema de diseño del proyecto. Antes de diseñar busca tokens, tema y componentes, y los reutiliza: una página nueva no recrea botones ni estilos. La identidad visual vive en los valores de los tokens y en un único elemento distintivo.
+
+```mermaid
+flowchart TD
+    accTitle: Cómo trabaja ui-design con el sistema de diseño
+    accDescr: ui-design inventaría los tokens y componentes del proyecto. Si hay un sistema en uso, lo extiende; si hay estilos dispersos, consolida lo que toca la tarea; si no hay nada, establece un sistema mínimo. Después planifica con fuentes, aplica la prueba de intercambio, construye desde el sistema y critica el resultado.
+
+    inventario["Inventario<br/>Tokens y componentes"]
+    extender["Extender<br/>Sistema en uso"]
+    consolidar["Consolidar<br/>Estilos dispersos"]
+    establecer["Establecer<br/>Sistema mínimo"]
+    plan["Plan con fuentes<br/>Prueba de intercambio"]
+    construir["Construir<br/>Tokens, componentes, página"]
+    critica["Crítica<br/>Señales y mínimo de calidad"]
+
+    inventario --> extender & consolidar & establecer
+    extender & consolidar & establecer --> plan --> construir --> critica
+```
+
+- Cada color, tipo y recurso de layout del plan indica su fuente: el brief, el sistema, una restricción de accesibilidad o un objeto del mundo del tema. La prueba de intercambio compara el plan con el que se haría para un competidor y sustituye lo que coincide.
+- Al construir, los valores literales solo viven en los archivos de tokens y cada diferencia es una variante del componente existente. Unas búsquedas sobre los archivos modificados lo comprueban.
+- Un rediseño conserva lo que otros usan sin verlo: `id` y anclas, nombres de campos, atributos de prueba y analítica, rutas y metadatos.
+- Las páginas existentes conservan su aspecto. Los cambios del sistema que se notarían en ellas llegan como propuesta en el informe, salvo los que corrigen contraste, foco u otro mínimo de calidad.
+- La lista de señales de UI generada se usa después de construir, como auditoría. Si el brief pide uno de esos estilos, se sigue el brief.
+- Las capturas de la crítica usan las herramientas de la [evidencia visual](#evidencia-visual).
+
+Si tienes activo otro skill de diseño de interfaces, como `frontend-design`, desactívalo o invoca este por su nombre. Varios skills con la misma descripción compiten, y cada sesión puede cargar uno distinto.
+
+[Pasos y referencias](skills/ui-design/SKILL.md) · [Escenarios probados](tests/ui-design-scenarios.md).
 
 ## Evidencia visual
 
@@ -174,7 +211,7 @@ Inicia una nueva sesión y selecciona el skill:
 
 Desde la versión 0.9.0, los skills se llaman `dirige`, `idea`, `revisa`, `memoria-recuerda` y `memoria-extraer`. El namespace `peqa-workflows` ya identifica el plugin, por lo que sus nombres dejaron de repetir `peqa-`. Actualiza las invocaciones anteriores; no se instalan aliases de los nombres antiguos.
 
-Las versiones `0.5.x` a `0.8.x` usaban nombres como `peqa-dirige`; en `0.9.0` pasa a `dirige`. Las memorias y los contadores de revisión conservan sus rutas y datos. El registro opcional de uso sigue leyendo los nombres históricos y agrupa sus eventos bajo los nombres actuales.
+Las versiones `0.5.x` a `0.8.x` usaban nombres como `peqa-dirige`; en `0.9.0` pasa a `dirige`. Las memorias y los contadores de revisión conservan sus rutas y datos. El registro opcional de uso sigue leyendo los nombres históricos y agrupa sus eventos bajo los nombres actuales. `ui-design`, añadido en `0.13.0`, no tiene nombre anterior.
 
 <details>
 <summary>Probar una copia local sin instalarla globalmente</summary>
@@ -206,11 +243,10 @@ Las pruebas usan repositorios temporales y datos sintéticos.
 ## Licencia
 
 [MIT](LICENSE). Puedes usar, modificar y distribuir el plugin, también con fines comerciales y en productos cerrados, conservando el aviso de copyright y la licencia. Se proporciona sin garantía.
-
 ## Contribuir
 
 Antes de añadir o modificar un skill, lee las [convenciones del proyecto](AGENTS.md). `CLAUDE.md` importa ese mismo archivo.
 
 ## Fuentes
 
-La entrevista toma como referencia conceptual a [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias. El empaquetado sigue las referencias de [OpenAI](https://developers.openai.com/plugins/build/plugins) y [Claude Code](https://code.claude.com/docs/en/plugins-reference); los contratos de T3 se citan en [herramientas del entorno](references/runtime-tools.md).
+La entrevista toma como referencia conceptual a [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias. `ui-design` parte de una revisión del skill [`frontend-design`](https://github.com/anthropics/claude-plugins-public/tree/main/plugins/frontend-design) de Anthropic y de otros skills de diseño, y de las pruebas registradas en [sus escenarios](tests/ui-design-scenarios.md). El empaquetado sigue las referencias de [OpenAI](https://developers.openai.com/plugins/build/plugins) y [Claude Code](https://code.claude.com/docs/en/plugins-reference); los contratos de T3 se citan en [herramientas del entorno](references/runtime-tools.md).

@@ -31,9 +31,11 @@ else:
 
 
 SKILLS = ("dirige", "idea", "revisa", "memoria-recuerda",
-          "memoria-extraer")
+          "memoria-extraer", "ui-design")
 # Historical event names remain readable; new records use canonical names only.
-LEGACY_SKILLS = {"peqa-" + skill: skill for skill in SKILLS}
+# Only the skills published before 0.9.0 carried the "peqa-" prefix.
+LEGACY_SKILLS = {"peqa-" + skill: skill for skill in
+                 ("dirige", "idea", "revisa", "memoria-recuerda", "memoria-extraer")}
 
 
 def canonical_skill(skill):
