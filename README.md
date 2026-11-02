@@ -2,11 +2,11 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.13.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.13.1` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
-`dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos.
+`dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Cada commit va a una rama con PR, abierto en el mismo paso, como borrador si el trabajo sigue; ningún commit se queda solo en local.
 
 ```mermaid
 flowchart TD
