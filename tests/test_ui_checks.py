@@ -1,6 +1,7 @@
 """ui-design checks exercised against isolated Git repositories and plain diffs."""
 
 import concurrent.futures
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -8,12 +9,26 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'skills/ui-design/scripts/ui_checks.py'
 GIT_ENV = {**{k: v for k, v in os.environ.items() if not k.startswith('GIT_')},
            'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1'}
+
+
+def load_helper():
+    """Import the helper for unit-level checks without writing bytecode."""
+    spec = importlib.util.spec_from_file_location('ui_checks_under_test', SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    previous, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
+    return module
 
 
 class Fixture(unittest.TestCase):
@@ -512,6 +527,204 @@ class ContrastTests(Fixture):
 
     def test_pair_limit(self):
         self.assertEqual(self.contrast(*[('#000', '#fff')] * 1001), (2, {'error': 'LIMIT_EXCEEDED'}))
+
+
+class FilterTests(Fixture):
+    """No Git call made by the helper may run a configured filter driver."""
+
+    def setUp(self):
+        super().setUp()
+        self.marker = self.root / 'filter-ran'
+        self.commit({'a.css': '.a {}\n', 'Form.html': '<input id="email">\n'})
+        self.write('a.css', '.a { color: #abcdef; }\n')
+        self.write('Form.html', '<p>gone</p>\n')
+
+    def probe(self, then='cat'):
+        return "printf ran >> '" + str(self.marker) + "'; " + then
+
+    def plain_git_runs_filter(self, env=None):
+        """Sanity check: the fixture really triggers the filter in a normal diff."""
+        subprocess.run(['git', '-C', str(self.repo), 'diff', 'HEAD'], capture_output=True,
+                       env=env or GIT_ENV, timeout=20)
+        ran = self.marker.exists()
+        if ran:
+            self.marker.unlink()
+        return ran
+
+    def assert_helper_runs_no_filter(self, env=None):
+        rc, data = self.cli('literals', '--repo', str(self.repo), '--base', 'HEAD', env=env)
+        self.assertEqual((rc, [(f['path'], f['category']) for f in data['findings']]), (1, [('a.css', 'color')]))
+        rc, data = self.cli('contracts', '--repo', str(self.repo), '--base', 'HEAD', '--', 'a.css', 'Form.html',
+                            env=env)
+        self.assertEqual((rc, [item['attribute'] for item in data['missing']]), (1, ['id="email"']))
+        self.assertFalse(self.marker.exists(), 'a filter ran')
+
+    def test_required_clean_filter_from_gitattributes_never_runs(self):
+        self.write('.gitattributes', '* filter=probe\n')
+        self.git('config', 'filter.probe.clean', self.probe())
+        self.git('config', 'filter.probe.smudge', self.probe())
+        self.git('config', 'filter.probe.required', 'true')
+        self.assertTrue(self.plain_git_runs_filter())
+        self.assert_helper_runs_no_filter()
+
+    def test_process_filter_never_runs(self):
+        self.write('.gitattributes', '* filter=probe\n')
+        self.git('config', 'filter.probe.process', 'sh -c "' + self.probe('exit 1').replace('"', '\\"') + '"')
+        self.assertTrue(self.plain_git_runs_filter())
+        self.assert_helper_runs_no_filter()
+
+    def test_info_attributes_and_included_config_are_covered(self):
+        (self.repo / '.git/info').mkdir(exist_ok=True)
+        (self.repo / '.git/info/attributes').write_text('* filter=included\n')
+        extra = self.write('extra.gitconfig', '[filter "included"]\n\tclean = "' + self.probe() + '"\n',
+                           base=self.root)
+        self.git('config', 'include.path', str(extra))
+        self.assertTrue(self.plain_git_runs_filter())
+        self.assert_helper_runs_no_filter()
+
+    def test_caller_environment_and_global_configuration_cannot_add_filters(self):
+        home = self.root / 'home'
+        self.write('.gitconfig', '[filter "home"]\n\tclean = "' + self.probe() + '"\n', base=home)
+        self.write('.config/git/attributes', '* filter=home\n', base=home)
+        quoted = "'" + self.probe().replace("'", "'\\''") + "'"
+        cases = [
+            ({'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': 'filter.env.clean', 'GIT_CONFIG_VALUE_0': self.probe()},
+             '* filter=env\n'),
+            ({'GIT_CONFIG_PARAMETERS': "'filter.params.clean'=" + quoted}, '* filter=params\n'),
+            ({'HOME': str(home), 'XDG_CONFIG_HOME': str(home / '.config')}, None),
+        ]
+        for extra, attributes in cases:
+            with self.subTest(extra=sorted(extra)):
+                env = {key: value for key, value in GIT_ENV.items() if key != 'GIT_CONFIG_GLOBAL'}
+                env.update(extra)
+                attributes_file = self.repo / '.gitattributes'
+                if attributes:
+                    attributes_file.write_text(attributes)
+                elif attributes_file.exists():
+                    attributes_file.unlink()
+                self.assertTrue(self.plain_git_runs_filter(env))
+                self.assert_helper_runs_no_filter(env)
+
+    def test_driver_name_that_cannot_be_overridden_is_refused(self):
+        self.write('.gitattributes', '* filter=a=b\n')
+        self.git('config', 'filter.a=b.clean', self.probe())
+        for command in ('literals', 'contracts'):
+            self.assertEqual(self.cli(command, '--repo', str(self.repo), '--base', 'HEAD'),
+                             (2, {'error': 'FILTER_UNSUPPORTED'}))
+        self.assertFalse(self.marker.exists())
+
+    def test_driver_added_during_the_run_is_an_error(self):
+        helper = load_helper()
+        calls = iter([set(), {b'late'}])
+        with patch.object(helper, '_filter_drivers', lambda top, budget: next(calls)):
+            with self.assertRaises(helper.CheckError) as raised:
+                helper.literals_git(self.repo, 'HEAD')
+        self.assertEqual(str(raised.exception), 'FILTER_CONFIG_CHANGED')
+
+    def test_git_older_than_the_minimum_is_refused(self):
+        fake = self.write('bin/git', '#!/bin/sh\necho "git version 2.31.9"\n', base=self.root)
+        fake.chmod(0o755)
+        env = {**GIT_ENV, 'PATH': str(fake.parent)}
+        self.assertEqual(self.cli('literals', '--repo', str(self.repo), '--base', 'HEAD', env=env),
+                         (2, {'error': 'GIT_UNSUPPORTED'}))
+
+
+class MultilineContractTests(Fixture):
+    BEFORE = {
+        'src/Form.html': '<input id = "email" name = "email" />\n<input id="keep">\n',
+        'src/app.ts': 'const name = "draft"\nlet id = \'temp\';\nfn(href = "/x")\n',
+        'ios/Login.swift': 'Button("Go") {}\n    .accessibilityIdentifier(\n        "login-submit"\n    )\n',
+        'ios/Other.swift': 'Text("x").accessibilityIdentifier("other")\n',
+        'android/Login.kt': 'Button(\n    modifier = Modifier.testTag(\n        "submit"\n    )\n) {}\n',
+    }
+    AFTER = {
+        'src/Form.html': '<input>\n<input id="keep">\n',
+        'src/app.ts': 'export {}\n',
+        'ios/Login.swift': 'Button("Go") {}\n',
+        # Reformatted across lines, still the same identifier.
+        'ios/Other.swift': 'Text("x")\n    .accessibilityIdentifier(\n        "other"\n    )\n',
+        'android/Login.kt': 'Button(modifier = Modifier) {}\n',
+    }
+    EXPECTED = [
+        {'attribute': '.accessibilityIdentifier("login-submit")', 'removed_in': [{'path': 'ios/Login.swift', 'line': 2}]},
+        {'attribute': 'id="email"', 'removed_in': [{'path': 'src/Form.html', 'line': 1}]},
+        {'attribute': 'name="email"', 'removed_in': [{'path': 'src/Form.html', 'line': 1}]},
+        {'attribute': 'testTag("submit")', 'removed_in': [{'path': 'android/Login.kt', 'line': 2}]},
+    ]
+
+    def test_git_mode(self):
+        self.commit(self.BEFORE)
+        for relative, content in self.AFTER.items():
+            self.write(relative, content)
+        rc, data = self.cli('contracts', '--repo', str(self.repo), '--base', 'HEAD')
+        self.assertEqual((rc, data['missing']), (1, self.EXPECTED))
+
+    def test_diff_mode(self):
+        if shutil.which('diff') is None:
+            self.skipTest('diff is not installed')
+        for relative in self.BEFORE:
+            self.write(relative, self.BEFORE[relative], base=self.root / 'orig')
+            self.write(relative, self.AFTER[relative], base=self.root / 'new')
+        result = subprocess.run(['diff', '-ruN', '-U0', 'orig', 'new'], cwd=self.root, capture_output=True)
+        diff = self.write('multi.diff', result.stdout, base=self.root)
+        rc, data = self.cli('contracts', '--diff', str(diff))
+        self.assertEqual((rc, data['missing']), (1, self.EXPECTED))
+
+    def test_new_untracked_file_restores_a_multiline_contract(self):
+        self.commit({'ios/A.swift': 'x.accessibilityIdentifier("moved")\n'})
+        self.write('ios/A.swift', 'x\n')
+        self.write('ios/B.swift', 'y\n    .accessibilityIdentifier(\n        "moved"\n    )\n')
+        rc, data = self.cli('contracts', '--repo', str(self.repo), '--base', 'HEAD')
+        self.assertEqual((rc, data['missing']), (0, []))
+
+
+class BoundsTests(Fixture):
+    def test_long_values_finish_well_within_the_time_budget(self):
+        self.commit({'base.txt': 'x\n'})
+        css = ''.join('.x { padding: ' + '1' * 18000 + '; }\n' for _ in range(55))
+        self.assertEqual(len(css.encode()), 990990)
+        self.write('long.css', css)
+        self.write('long.tsx', ''.join('<div className="p-[' + '1' * 18000 + 'x]" />\n' for _ in range(55)))
+        self.write('long.swift', ''.join('.padding(' + '1' * 18000 + 'x)\n' for _ in range(55)))
+        self.write('long.html', ''.join('<a id={' + 'a' * 18000 + '\n' for _ in range(55)))
+        started = time.monotonic()
+        rc, data = self.literals()
+        elapsed = time.monotonic() - started
+        self.assertEqual((rc, data['findings'], data['skipped']), (0, [], []), data)
+        self.assertEqual(len(data['scanned']), 4)
+        rc, _ = self.cli('contracts', '--repo', str(self.repo), '--base', 'HEAD')
+        self.assertEqual(rc, 0)
+        # Linear patterns take well under a second here; the bound only guards
+        # against a return of quadratic backtracking on slow machines.
+        self.assertLess(time.monotonic() - started, 25)
+        self.assertLess(elapsed, 20)
+
+    def test_time_budget_is_checked_between_lines(self):
+        helper = load_helper()
+        budget = helper._Budget()
+        budget.deadline = time.monotonic() - 1
+        document = helper._Document(b'.a { color: #fff; }\n.b {}\n')
+        with self.assertRaises(helper.CheckError) as raised:
+            helper._scan('a.css', 'css', document, [1, 2], set(), budget)
+        self.assertEqual(str(raised.exception), 'TIMEOUT')
+
+    def contracts_diff(self, lines, header):
+        diff = self.write('bounds.diff', '\n'.join(['--- a/x.html', '+++ b/x.html', header, *lines]) + '\n',
+                          base=self.root)
+        return self.cli('contracts', '--diff', str(diff))
+
+    def test_missing_contracts_are_capped_at_ten_thousand(self):
+        rc, data = self.contracts_diff(['-<i id="n%d">' % n for n in range(10000)], '@@ -1,10000 +0,0 @@')
+        self.assertEqual((rc, len(data['missing'])), (1, 10000))
+        self.assertEqual(self.contracts_diff(['-<i id="n%d">' % n for n in range(10001)], '@@ -1,10001 +0,0 @@'),
+                         (2, {'error': 'LIMIT_EXCEEDED'}))
+
+    def test_intermediate_contract_entries_are_bounded(self):
+        # One attribute removed from 50 001 lines: a single missing entry, too many locations.
+        self.assertEqual(self.contracts_diff(['-<i id="same">'] * 50001, '@@ -1,50001 +0,0 @@'),
+                         (2, {'error': 'LIMIT_EXCEEDED'}))
+        self.assertEqual(self.contracts_diff(['+<i id="n%d">' % n for n in range(50001)], '@@ -0,0 +1,50001 @@'),
+                         (2, {'error': 'LIMIT_EXCEEDED'}))
 
 
 if __name__ == '__main__':

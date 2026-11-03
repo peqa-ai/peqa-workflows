@@ -30,15 +30,29 @@ repository root (Git mode) or to --root (diff mode). Diff mode reads a unified
 diff such as `diff -ruN -U0 orig new`; files without content in the diff
 (`Only in` lines from a diff without -N) are listed as skipped.
 
+Contracts are matched on runs of consecutive removed or added lines, so a
+call or tag split across lines counts once, at its first line; whitespace
+around `=` is accepted, and assignments such as `const id = "x"` are not
+attributes.
+
 Guarantees. No Git writes or optional locks, hooks, external diff, textconv,
-network or shell; nothing from the scanned files is executed. Global and system
-Git configuration are ignored; clean filters configured in the repository may
-run as they do for `git diff`. Files are opened without following symlinks.
-Symlinks, submodules, nested repositories, binaries, files over 1 MiB, lines
-over 20000 characters, unsupported extensions and files whose content no longer
-matches the diff are listed in "skipped" with a reason. Work is bounded in
-time, bytes, files and findings; exceeding a bound is an error, not a partial
-result. Findings are lint evidence for the report, not a design review.
+pager, network or shell; nothing from the scanned files is executed. Requires
+Git 2.32 or later (GIT_UNSUPPORTED otherwise). Global and system Git
+configuration, the caller's GIT_* variables (GIT_CONFIG_PARAMETERS,
+GIT_CONFIG_COUNT...) and global or system attributes are ignored. No Git
+filter runs: every filter driver defined in the configuration Git reads
+(repository, worktree and included files) is overridden with empty clean,
+smudge and process commands and required=false on every Git call, whichever
+attributes file selects it (.gitattributes, info/attributes). The driver list
+is read again after the last Git call; a change is FILTER_CONFIG_CHANGED and a
+driver name that cannot be overridden is FILTER_UNSUPPORTED, both exit 2.
+Files are opened without following symlinks. Symlinks, submodules, nested
+repositories, binaries, files over 1 MiB, lines over 20000 characters,
+unsupported extensions and files whose content no longer matches the diff are
+listed in "skipped" with a reason. Work is bounded in time (checked per line),
+bytes, files, findings and contract entries, and patterns run in linear time
+on long lines; exceeding a bound is an error, not a partial result. Findings
+are lint evidence for the report, not a design review.
 """
 
 from __future__ import annotations
@@ -66,7 +80,10 @@ MAX_FILES = 10000
 MAX_FINDINGS = 10000
 MAX_LINE_CHARS = 20000
 MAX_ARGUMENTS = 1000
+MAX_CONTRACT_ENTRIES = 50000
+MAX_FILTER_DRIVERS = 256
 MAX_TEXT = 200
+MIN_GIT = (2, 32)
 SHA = re.compile(r'(?:[0-9a-f]{40}|[0-9a-f]{64})\Z')
 KINDS = {'text': 4.5, 'large': 3.0, 'ui': 3.0}
 CATEGORIES = ('color', 'length', 'arbitrary_value', 'inline_style', 'raw_control')
@@ -75,23 +92,28 @@ WRAPPER_CATEGORIES = frozenset(('raw_control',))
 
 # Literal patterns. A hex color needs 3, 4, 6 or 8 digits and is not part of a
 # word, entity, URL fragment, private member or href; in web files a hex that
-# starts a selector (`#fab {`) is not a color.
+# starts a selector (`#fab {`) is not a color. NUMBER has a single way to match
+# a digit run, so no pattern backtracks quadratically on long lines.
+NUMBER = r'(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)'
 HEX = (r'(?<![\w&./#])(?<!href=")(?<!href=\')(?<!href=\{")(?<!href=\{\')(?<!url\()'
        r'#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w(-])')
 COLOR_FUNCTION = r'(?<![\w.$-])(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\('
-CSS_LENGTH = (r'(?i:margin|padding|gap|font(?:-?size)?|border[a-z-]*?radius)[A-Za-z-]*\s*:'
-              r'[^;}]*\b[0-9]*\.?[0-9]+(?:px|rem|em)\b')
-TAILWIND_ARBITRARY = r'(?<=-)\[(?:#[0-9a-fA-F]{3,8}|-?[0-9]*\.?[0-9]+(?:px|rem|em))(?![\w-])'
+# A declaration: a property (an identifier of at most 64 characters followed by
+# `:`) whose name matches the first pattern, and whose value, up to the next `;`
+# or `}`, matches the second.
+CSS_LENGTH = (r'(?i:margin|padding|gap|font(?:-?size)?|border[a-z-]*?radius)[A-Za-z-]*\Z',
+              r'(?<![\w.])' + NUMBER + r'(?:px|rem|em)\b')
+TAILWIND_ARBITRARY = r'(?<=-)\[(?:#[0-9a-fA-F]{3,8}|-?' + NUMBER + r'(?:px|rem|em))(?![\w-])'
 STYLE_ATTRIBUTE = r'''\bstyle=(?:\{\{|"|')'''
 IMPORTANT = r'!\s*important\b'
 RAW_CONTROL = r'<(?:button|input|select|textarea)(?![\w-])'
 SWIFT_COLOR = (r'\b(?:UI|NS)?Color\(\s*(?:\.(?:sRGB|sRGBLinear|displayP3)\b|'
                r'(?:red|hue|white|hex|displayP3Red):)|#colorLiteral\(')
-SWIFT_LENGTH = (r'\.padding\(\s*(?:(?:\.[A-Za-z]+|\[[^\]]*\])\s*,\s*)?-?[0-9]*\.?[0-9]+\b'
-                r'|\bspacing:\s*-?[0-9]*\.?[0-9]+\b'
-                r'|\bcornerRadius\s*[:(=]\s*[0-9]*\.?[0-9]+\b'
-                r'|\.system\(\s*size:\s*[0-9]*\.?[0-9]+\b'
-                r'|\bsystemFont\(\s*ofSize:\s*[0-9]*\.?[0-9]+\b')
+SWIFT_LENGTH = (r'\.padding\(\s*(?:(?:\.[A-Za-z]+|\[[^\]]{0,256}\])\s*,\s*)?-?' + NUMBER + r'\b'
+                r'|\bspacing:\s*-?' + NUMBER + r'\b'
+                r'|\bcornerRadius\s*[:(=]\s*' + NUMBER + r'\b'
+                r'|\.system\(\s*size:\s*' + NUMBER + r'\b'
+                r'|\bsystemFont\(\s*ofSize:\s*' + NUMBER + r'\b')
 KOTLIN_COLOR = r'\bColor\(\s*(?:[0-9]|red\s*=)|\bColor\.(?:parseColor|rgb|argb)\('
 KOTLIN_LENGTH = r'\b[0-9]+(?:\.[0-9]+)?\.(?:dp|sp)\b'
 
@@ -115,11 +137,42 @@ LINE_COMMENT_EXTENSIONS = frozenset(('scss', 'sass', 'less'))
 CONTRACT_KINDS = frozenset(('web', 'swift', 'kotlin'))
 COMMENT_PREFIXES = ('//', '/*', '*', '<!--', '{/*')
 
-_COMPILED = {kind: [(category, [(source is HEX, re.compile(source)) for source in sources])
+_PROPERTY = re.compile(r'(?<![\w-])(-{0,2}[A-Za-z][\w-]*)\s*:')
+_VALUE_END = re.compile(r'[;}]')
+
+
+class _Declaration:
+    """finditer() over declarations; each value is searched at most once."""
+
+    def __init__(self, name, value):
+        self.name, self.value = re.compile(name), re.compile(value)
+
+    def finditer(self, line):
+        searched = -1
+        for match in _PROPERTY.finditer(line):
+            # A property inside a value already searched has the same end, so
+            # its value is a suffix of a region that was already examined.
+            if match.start() < searched:
+                continue
+            name = match.group(1)
+            if len(name) > 64 or not self.name.search(name):
+                continue
+            end = _VALUE_END.search(line, match.end())
+            searched = end.start() if end else len(line)
+            if self.value.search(line, match.end(), searched):
+                yield match
+
+
+def _compile(source):
+    return _Declaration(*source) if isinstance(source, tuple) else re.compile(source)
+
+
+_COMPILED = {kind: [(category, [(source is HEX, _compile(source)) for source in sources])
                     for category, sources in table.items()]
              for kind, table in PATTERNS.items()}
-_SELECTOR_REST = re.compile(r'[^;{}()"\'`]*\{')
+_SELECTOR_STOP = re.compile(r'[;{}()"\'`]')
 _CSS_TOKEN = re.compile(r'/\*|//|[#@]\{|["\'{};]')
+_STRING_BODY = {'"': re.compile(r'(?:[^"\\\n]|\\[\s\S])*'), "'": re.compile(r"(?:[^'\\\n]|\\[\s\S])*")}
 _BLOCK_COMMENT = re.compile(r'/\*.*?(?:\*/|\Z)', re.S)
 _LINE_COMMENT = re.compile(r'(?m)(?:^|(?<=\s))//.*$')
 _ROOT_SELECTOR = re.compile(r':root(?![\w-])')
@@ -128,10 +181,17 @@ _TOKENS_LAYER = re.compile(r'@layer\s+tokens(?:\.[\w-]+)*')
 _HUNK = re.compile(rb'@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@')
 _BINARY = re.compile(rb'Binary files (.+) and (.+) differ\Z')
 _ONLY_IN = re.compile(rb'Only in (.+): (.+)\Z')
-_ATTRIBUTE = re.compile(r'''(?<![\w-])(id|name|for|htmlFor|autocomplete|autoComplete|href|data-[A-Za-z0-9_-]+)='''
-                        r'''("[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})''')
-_SWIFT_IDENTIFIER = re.compile(r'\.accessibilityIdentifier\(\s*"((?:[^"\\]|\\.)*)"\s*\)')
-_COMPOSE_TAG = re.compile(r'\btestTag\(\s*"((?:[^"\\]|\\.)*)"\s*\)')
+# Contract values are bounded (1024 characters, braces nested one level, eight
+# inner groups) so matching stays linear in the length of a run of lines.
+_ATTRIBUTE = re.compile(r'''(?<![\w.$-])(id|name|for|htmlFor|autocomplete|autoComplete|href|data-[A-Za-z0-9_-]{1,64})'''
+                        r'''\s*=\s*("[^"\n]{0,1024}"|'[^'\n]{0,1024}'|'''
+                        r'''\{[^{}]{0,1024}(?:\{[^{}]{0,1024}\}[^{}]{0,1024}){0,8}\})''')
+_STATEMENT_BEFORE = re.compile(r'(?:\b(?:const|let|var|val|export|return)\s+|[(,\[{=!&|+?]\s*)\Z')
+_STATEMENT_AFTER = re.compile(r'[ \t]*;')
+_SWIFT_IDENTIFIER = re.compile(r'\.accessibilityIdentifier\(\s*"((?:[^"\\\n]|\\.){0,1024})"\s*\)')
+_COMPOSE_TAG = re.compile(r'\btestTag\(\s*"((?:[^"\\\n]|\\.){0,1024})"\s*\)')
+_FILTER_KEY = re.compile(rb'filter\.([\s\S]+)\.(?:clean|smudge|process|required)\Z')
+_GIT_VERSION = re.compile(rb'git version ([0-9]+)\.([0-9]+)')
 _STRING_EXPRESSION = re.compile(r'''"([^"]*)"|'([^']*)'|`([^`$]*)`''')
 _CANONICAL = {'htmlFor': 'for', 'autoComplete': 'autocomplete'}
 _HEX_COLOR = re.compile(r'#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})')
@@ -155,6 +215,7 @@ class _Budget:
         self.deadline = time.monotonic() + MAX_SECONDS
         self.bytes = 0
         self.files = 0
+        self.git_config = []  # filter overrides added to every later Git call
 
     def check(self):
         if time.monotonic() > self.deadline:
@@ -185,17 +246,22 @@ class _Change:
 
 # Git -----------------------------------------------------------------------
 
-def _git(cwd, args, budget, optional=False):
-    """No shell, bounded output and time; global config and helpers disabled."""
+def _git(cwd, args, budget, optional=False, allow=()):
+    """No shell, bounded output and time; global config, helpers and filters disabled.
+
+    Exit codes in `allow` return the output; any other failure returns None when
+    optional, else raises.
+    """
     budget.check()
     env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
     env.update(GIT_TERMINAL_PROMPT='0', GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1',
-               GIT_CONFIG_GLOBAL=os.devnull, GIT_NO_REPLACE_OBJECTS='1',
+               GIT_CONFIG_GLOBAL=os.devnull, GIT_ATTR_NOSYSTEM='1', GIT_NO_REPLACE_OBJECTS='1',
                GIT_NO_LAZY_FETCH='1', LC_ALL='C')
-    command = ['git', '--no-optional-locks', '--literal-pathspecs',
+    command = ['git', '--no-pager', '--no-optional-locks', '--literal-pathspecs',
                '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=' + os.devnull,
+               '-c', 'core.attributesFile=' + os.devnull,
                '-c', 'core.quotePath=false', '-c', 'protocol.allow=never',
-               '-C', cwd, *args]
+               *budget.git_config, '-C', cwd, *args]
     try:
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                 stdin=subprocess.DEVNULL, env=env)
@@ -222,7 +288,7 @@ def _git(cwd, args, budget, optional=False):
                 status = proc.wait(timeout=max(0.01, deadline - time.monotonic()))
             except subprocess.TimeoutExpired as exc:
                 raise CheckError('TIMEOUT') from exc
-        if status:
+        if status and status not in allow:
             if optional:
                 return None
             raise CheckError('GIT_COMMAND_FAILED')
@@ -241,11 +307,47 @@ def _toplevel(repo, budget):
         raise CheckError('NOT_A_GIT_REPO') from exc
     if not os.path.isdir(start):
         raise CheckError('NOT_A_GIT_REPO')
+    version = _GIT_VERSION.match(_git(start, ['version'], budget, optional=True) or b'')
+    if not version or (int(version.group(1)), int(version.group(2))) < MIN_GIT:
+        raise CheckError('GIT_UNSUPPORTED')
     output = _git(start, ['rev-parse', '--show-toplevel'], budget, optional=True)
     top = os.fsdecode(output or b'').rstrip('\n')
     if not top or not os.path.isabs(top):
         raise CheckError('NOT_A_GIT_REPO')
     return os.path.realpath(top), start
+
+
+def _filter_drivers(top, budget):
+    """Names of every filter driver in the configuration Git reads here.
+
+    `git config` reads the same sources as the later commands (repository and
+    worktree files with their includes; global, system and environment
+    configuration are excluded by _git) and runs no filter itself.
+    """
+    output = _git(top, ['config', '-z', '--name-only', '--get-regexp', r'^filter\.'], budget, allow=(1,))
+    names = set()
+    for key in output.split(b'\0'):
+        match = _FILTER_KEY.fullmatch(key.rstrip(b'\n'))
+        if match:
+            names.add(match.group(1))
+    return names
+
+
+def _neutralize_filters(top, budget):
+    """Override every driver so no clean, smudge or process command can run."""
+    names = _filter_drivers(top, budget)
+    if len(names) > MAX_FILTER_DRIVERS:
+        raise CheckError('LIMIT_EXCEEDED')
+    overrides = []
+    for raw in sorted(names):
+        # `-c` splits at the first `=`, so such a name cannot be overridden.
+        if b'=' in raw or b'\n' in raw or b'\0' in raw:
+            raise CheckError('FILTER_UNSUPPORTED')
+        name = os.fsdecode(raw)
+        overrides += ['-c', 'filter.' + name + '.clean=', '-c', 'filter.' + name + '.smudge=',
+                      '-c', 'filter.' + name + '.process=', '-c', 'filter.' + name + '.required=false']
+    budget.git_config = overrides
+    return names
 
 
 def _resolve_base(top, base, budget):
@@ -291,6 +393,7 @@ def _check_pathspecs(top, sha, specs, budget):
 
 def _git_scope(repo, base, pathspecs, budget):
     top, start = _toplevel(repo, budget)
+    drivers = _neutralize_filters(top, budget)
     sha = _resolve_base(top, base, budget)
     if len(pathspecs) > MAX_ARGUMENTS:
         raise CheckError('LIMIT_EXCEEDED')
@@ -300,6 +403,9 @@ def _git_scope(repo, base, pathspecs, budget):
                                     'GIT_OUTPUT_INVALID'), git=True)
     others = _git(top, ['ls-files', '-z', '--others', '--exclude-standard', '--', *specs], budget)
     untracked = sorted({os.fsdecode(item) for item in others.split(b'\0') if item})
+    # A driver defined while Git was running would not have been overridden.
+    if _filter_drivers(top, budget) != drivers:
+        raise CheckError('FILTER_CONFIG_CHANGED')
     budget.file(len(changes) + len(untracked))
     return top, start, changes, untracked
 
@@ -665,7 +771,7 @@ def _token_prelude(prelude, line_comments):
     return any(_ROOT_SELECTOR.match(part.strip()) for part in cleaned.split(','))
 
 
-def _css_regions(text, line_comments):
+def _css_regions(text, line_comments, budget):
     """Intervals inside :root/@theme/@layer tokens blocks, and comment intervals.
 
     A small brace tracker: comments and strings are skipped, Sass and Less
@@ -677,10 +783,14 @@ def _css_regions(text, line_comments):
     prelude = 0
     position = 0
     length = len(text)
+    tokens = 0
     while True:
         match = _CSS_TOKEN.search(text, position)
         if match is None:
             break
+        tokens += 1
+        if tokens % 4096 == 0:
+            budget.check()
         token, start = match.group(), match.start()
         position = match.end()
         if token == '/*':
@@ -697,10 +807,8 @@ def _css_regions(text, line_comments):
                 comment_ends.append(end)
                 position = end
         elif token in ('"', "'"):
-            cursor = position
-            while cursor < length and text[cursor] not in (token, '\n'):
-                cursor += 2 if text[cursor] == '\\' else 1
-            position = min(cursor + 1, length)
+            # The string ends at its quote or, unescaped, at the end of the line.
+            position = min(_STRING_BODY[token].match(text, position).end() + 1, length)
         elif token in ('#{', '@{'):
             interpolation += 1
         elif token == '{':
@@ -737,16 +845,17 @@ def _within(intervals, offset):
 
 # literals ------------------------------------------------------------------
 
-def _scan(path, kind, document, numbers, allowed):
+def _scan(path, kind, document, numbers, allowed, budget):
     """Findings for the given line numbers, or a skip reason."""
+    if any(len(document.lines[number - 1]) > MAX_LINE_CHARS for number in numbers):
+        return 'long_lines'
     regions = None
     if kind == 'css':
-        regions = _css_regions(document.text, _extension(path) in LINE_COMMENT_EXTENSIONS)
+        regions = _css_regions(document.text, _extension(path) in LINE_COMMENT_EXTENSIONS, budget)
     findings = []
     for number in numbers:
+        budget.check()
         line = document.lines[number - 1]
-        if len(line) > MAX_LINE_CHARS:
-            return 'long_lines'
         if regions is None and _comment_line(line):
             continue
         for category, regexes in _COMPILED[kind]:
@@ -760,9 +869,18 @@ def _scan(path, kind, document, numbers, allowed):
 
 
 def _reported(line, regex, is_hex, kind, regions, line_start, category):
+    selector = is_hex and kind in ('css', 'web')
+    stop, brace = -1, False
     for match in regex.finditer(line):
-        if is_hex and kind in ('css', 'web') and _SELECTOR_REST.match(line, match.end()):
-            continue
+        if selector:
+            # A hex is a selector when the next of ; { } ( ) quote or backtick
+            # is `{`. Matches advance, so the stop found last is reused.
+            if match.end() > stop:
+                found = _SELECTOR_STOP.search(line, match.end())
+                stop = found.start() if found else len(line)
+                brace = found is not None and found.group() == '{'
+            if brace:
+                continue
         if regions is not None:
             offset = line_start + match.start()
             if _within(regions[1], offset):
@@ -799,7 +917,7 @@ def _literals(changes, untracked, read, tokens, wrappers, budget):
             allowed |= TOKEN_CATEGORIES
         if _listed(path, wrappers):
             allowed |= WRAPPER_CATEGORIES
-        result = _scan(path, kind, document, numbers, allowed)
+        result = _scan(path, kind, document, numbers, allowed, budget)
         if isinstance(result, str):
             skipped.setdefault(path, result)
             return
@@ -897,15 +1015,23 @@ def literals_diff(diff_file, root, tokens=(), wrappers=()):
 
 # contracts -----------------------------------------------------------------
 
-def _attributes(line, kind):
-    """(key, display) pairs for contract attributes on one line."""
+def _attributes(text, kind):
+    """(key, display, offset) for contract attributes in text, which may span lines."""
     if kind == 'swift':
-        return [(('accessibilityIdentifier', 'str', value), '.accessibilityIdentifier("' + value + '")')
-                for value in _SWIFT_IDENTIFIER.findall(line)]
+        return [(('accessibilityIdentifier', 'str', match.group(1)),
+                 '.accessibilityIdentifier("' + match.group(1) + '")', match.start())
+                for match in _SWIFT_IDENTIFIER.finditer(text)]
     if kind == 'kotlin':
-        return [(('testTag', 'str', value), 'testTag("' + value + '")') for value in _COMPOSE_TAG.findall(line)]
+        return [(('testTag', 'str', match.group(1)), 'testTag("' + match.group(1) + '")', match.start())
+                for match in _COMPOSE_TAG.finditer(text)]
     result = []
-    for name, raw in _ATTRIBUTE.findall(line):
+    for match in _ATTRIBUTE.finditer(text):
+        name, raw, start = match.group(1), match.group(2), match.start()
+        line_start = text.rfind('\n', max(0, start - 32), start) + 1
+        # `const id = "x"`, `f(name = "x")` and `href = "/x";` are code, not attributes.
+        if (_STATEMENT_BEFORE.search(text, max(line_start, start - 32), start)
+                or _STATEMENT_AFTER.match(text, match.end())):
+            continue
         if raw[0] == '{':
             inner = raw[1:-1].strip()
             literal = _STRING_EXPRESSION.fullmatch(inner)
@@ -916,33 +1042,57 @@ def _attributes(line, kind):
         else:
             kind_, value = 'str', raw[1:-1]
         display = name + ('="' + value + '"' if kind_ == 'str' else '={' + value + '}')
-        result.append(((_CANONICAL.get(name, name), kind_, value), display))
+        result.append(((_CANONICAL.get(name, name), kind_, value), display, start))
     return result
+
+
+def _runs(lines):
+    """Split (number, text) pairs into runs of consecutive line numbers."""
+    run = []
+    for number, text in lines:
+        if run and number != run[-1][0] + 1:
+            yield run
+            run = []
+        run.append((number, text))
+    if run:
+        yield run
 
 
 def _contracts(changes, untracked, read, budget):
     removed, added = {}, set()
     scanned, skipped = set(), {}
+    entries = [0]
 
     def collect(path, lines, side):
         kind = _kind(path)
         if kind not in CONTRACT_KINDS:
             skipped.setdefault(path, 'unsupported_type')
             return
-        for number, text in lines:
-            if len(text) > MAX_LINE_CHARS:
-                skipped.setdefault(path, 'long_lines')
-                return
+        if any(len(text) > MAX_LINE_CHARS for _, text in lines):
+            skipped.setdefault(path, 'long_lines')
+            return
         scanned.add(path)
-        for number, text in lines:
-            if _comment_line(text):
-                continue
-            for key, display in _attributes(text, kind):
+        for run in _runs(lines):
+            budget.check()
+            # Comment lines keep their place so offsets still map to line numbers.
+            texts = ['' if _comment_line(text) else text for _, text in run]
+            starts, offset = [], 0
+            for text in texts:
+                starts.append(offset)
+                offset += len(text) + 1
+            for key, display, start in _attributes('\n'.join(texts), kind):
+                number = run[bisect.bisect_right(starts, start) - 1][0]
                 if side == 'added':
                     added.add(key)
+                    if len(added) > MAX_CONTRACT_ENTRIES:
+                        raise CheckError('LIMIT_EXCEEDED')
                 else:
                     entry = removed.setdefault(key, {'display': display, 'where': set()})
-                    entry['where'].add((path, number))
+                    if (path, number) not in entry['where']:
+                        entry['where'].add((path, number))
+                        entries[0] += 1
+                        if entries[0] > MAX_CONTRACT_ENTRIES:
+                            raise CheckError('LIMIT_EXCEEDED')
 
     for change in changes:
         budget.check()
@@ -982,6 +1132,8 @@ def _contracts(changes, untracked, read, budget):
     missing = []
     for key, entry in removed.items():
         if key not in added:
+            if len(missing) == MAX_FINDINGS:
+                raise CheckError('LIMIT_EXCEEDED')
             where = [{'path': path, 'line': number} for path, number in sorted(entry['where'])]
             missing.append({'attribute': entry['display'], 'removed_in': where})
     missing.sort(key=lambda item: (item['attribute'], item['removed_in'][0]['path'], item['removed_in'][0]['line']))
