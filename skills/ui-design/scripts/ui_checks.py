@@ -50,13 +50,16 @@ GIT_ALLOW_PROTOCOL is set empty, which outranks any protocol.<name>.allow in
 the repository, so a lazy fetch from a promisor remote cannot use any
 transport (GIT_NO_LAZY_FETCH is also set, honored from Git 2.44); a missing
 object is then GIT_COMMAND_FAILED. core.fsmonitor is set empty, which disables
-it on every supported release. No Git filter runs: every filter driver defined
-in the configuration Git reads (repository, worktree and included files),
-including the driver with an empty name, is overridden with empty clean,
-smudge and process commands and required=false on every Git call, whichever
-attributes file selects it (.gitattributes, info/attributes). The driver list
-is read again after the last Git call; a change is FILTER_CONFIG_CHANGED and a
-driver name that cannot be overridden is FILTER_UNSUPPORTED, both exit 2.
+it on every supported release. Filter drivers do not run: every filter driver
+defined in the configuration Git reads (repository, worktree and included
+files), including the driver with an empty name, is overridden with empty
+clean, smudge and process commands and required=false on every Git call,
+whichever attributes file selects it (.gitattributes, info/attributes). The
+driver list is read once before the first diff, so a driver that another
+process adds to the repository configuration while the helper runs can still
+run once; such a process already runs code as the same user. The list is read
+again after the last Git call; a change is FILTER_CONFIG_CHANGED and a driver
+name that cannot be overridden is FILTER_UNSUPPORTED, both exit 2.
 Files are opened without following symlinks. Symlinks, submodules, nested
 repositories, binaries, files over 1 MiB, lines over 20000 characters,
 unsupported extensions and files whose content no longer matches the diff are
