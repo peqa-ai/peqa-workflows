@@ -60,7 +60,7 @@ Desde `0.13.0`, `ui-design` construye o rediseña interfaces desde el sistema de
 ```mermaid
 flowchart TD
     accTitle: Cómo trabaja ui-design con el sistema de diseño
-    accDescr: ui-design acepta interfaces web, incluidas las apps en webview, y pantallas nativas en SwiftUI o Jetpack Compose, y las lleva por el mismo proceso. Inventaría los tokens y componentes del proyecto. Si hay un sistema en uso, lo extiende; si hay estilos dispersos, consolida lo que toca la tarea; si no hay nada, establece un sistema mínimo. Después planifica con fuentes, aplica la prueba de intercambio, construye desde el sistema, comprueba el diff con el helper y critica el resultado. Por último, Claude Opus y Codex puntúan la interfaz sobre 10: con más de 8 termina y con 8 o menos corrige, repite comprobaciones y capturas y vuelve a puntuar, hasta tres rondas.
+    accDescr: ui-design acepta interfaces web, incluidas las apps en webview, y pantallas nativas en SwiftUI o Jetpack Compose, y las lleva por el mismo proceso. Inventaría los tokens y componentes del proyecto. Si hay un sistema en uso, lo extiende; si hay estilos dispersos, consolida lo que toca la tarea; si no hay nada, establece un sistema mínimo. Después planifica con fuentes, aplica la prueba de intercambio, construye desde el sistema, comprueba el diff con el helper y critica el resultado. Por último, Claude Opus y Codex puntúan la interfaz sobre 10: con una media de más de 8 y ninguna nota por debajo de 8 termina; si no, corrige, repite comprobaciones y capturas y vuelve a puntuar, hasta tres rondas.
 
     web["Web<br/>Navegador o webview"]
     nativa["Nativa<br/>SwiftUI o Compose"]
@@ -73,14 +73,14 @@ flowchart TD
     helper["Helper<br/>Literales y contratos"]
     critica["Crítica<br/>Capturas, señales y mínimo de calidad"]
     puntuacion["Puntuación<br/>Claude Opus y Codex, sobre 10"]
-    listo["Más de 8<br/>Informe"]
+    listo["Informe"]
     corregir["Corregir<br/>Comprobaciones y capturas"]
 
     web & nativa --> inventario
     inventario --> extender & consolidar & establecer
     extender & consolidar & establecer --> plan --> construir --> helper --> critica --> puntuacion
-    puntuacion -->|"Más de 8"| listo
-    puntuacion -->|"8 o menos"| corregir -->|"Hasta tres rondas"| puntuacion
+    puntuacion -->|"Media de más de 8<br/>y ninguna nota bajo 8"| listo
+    puntuacion -->|"Si no"| corregir -->|"Hasta tres rondas"| puntuacion
 ```
 
 - Cada color, tipo y recurso de layout del plan indica su fuente: el brief, el sistema, una restricción de accesibilidad o un objeto del mundo del tema. La prueba de intercambio compara el plan con el que se haría para un competidor y sustituye lo que coincide.
@@ -91,7 +91,7 @@ flowchart TD
 - Una app en webview, como Tauri, Electron o Capacitor, sigue la ruta web con el tamaño mínimo y el típico de su ventana.
 - La lista de señales de UI generada se usa después de construir, como auditoría. Si el brief pide uno de esos estilos, se sigue el brief.
 - Las capturas de la crítica usan las herramientas de la [evidencia visual](#evidencia-visual).
-- Después de la crítica, un subagente de Claude Opus y uno de Codex puntúan las capturas de 0 a 10 en nueve criterios, sin ver la autocrítica ni la nota del otro. El resultado es la media de los dos: más de 8 es bueno y más de 9, prácticamente perfecto. Si falta uno, puntúa el otro y el informe dice por qué. Con 8 o menos se corrigen los hallazgos aceptados y se puntúa de nuevo, hasta tres rondas. Esta nota no consume el presupuesto de `revisa`. En `dirige`, el padre puntúa el cambio integrado. Consulta [puntuación](skills/ui-design/references/scoring.md).
+- Después de la crítica, un subagente de Claude Opus y uno de Codex puntúan las capturas de 0 a 10 en nueve criterios, sin ver la autocrítica ni la nota del otro. El resultado es la media de los dos: más de 8 es bueno y más de 9, prácticamente perfecto. Si falta uno, puntúa el otro y el informe dice por qué. La escala es exigente: un criterio con algún hallazgo tiene como mucho 8, y el 10 queda para lo excepcional. Con una media de 8 o menos, o cualquier nota por debajo de 8, se corrige y se puntúa de nuevo, hasta tres rondas. Esta nota no consume el presupuesto de `revisa`. En `dirige`, el padre puntúa el cambio integrado. Consulta [puntuación](skills/ui-design/references/scoring.md).
 
 Si tienes activo otro skill de diseño de interfaces, como `frontend-design`, desactívalo o invoca este por su nombre. Varios skills con la misma descripción compiten, y cada sesión puede cargar uno distinto.
 

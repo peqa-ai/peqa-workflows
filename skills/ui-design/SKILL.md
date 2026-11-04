@@ -69,9 +69,9 @@ Termina cuando cada comprobación pasa o el informe nombra lo que falta.
 
 ### 7. Puntuar
 
-Cada cambio visual se puntúa, y este skill ya autoriza los revisores. Lanza un subagente de Claude Opus y uno de Codex con la rúbrica sobre 10 de [puntuación](references/scoring.md), que dice cómo llamarlos en cada host. Un resultado de más de 8 es bueno y uno de más de 9, prácticamente perfecto. Con 8 o menos, corrige los hallazgos aceptados y vuelve a puntuar, hasta tres rondas.
+Cada cambio visual se puntúa, y este skill ya autoriza los revisores. Lanza un subagente de Claude Opus y uno de Codex con la rúbrica sobre 10 de [puntuación](references/scoring.md), que dice cómo llamarlos en cada host. Con todas las notas en 8 o más, un resultado de más de 8 es bueno y uno de más de 9, prácticamente perfecto; las notas altas se ganan con evidencia. Con un resultado de 8 o menos, o cualquier nota por debajo de 8, corrige los hallazgos y vuelve a puntuar, hasta tres rondas.
 
-Termina cuando una ronda supera 8 o se agotan las tres, con las notas en el informe. Un revisor solo queda fuera si su ruta no existe o falla, y el informe dice cuál y por qué.
+Termina cuando una ronda supera 8 con todas las notas en 8 o más, cuando se agotan las tres o cuando la corrección espera una decisión de la persona, con las notas en el informe. Un revisor solo queda fuera si su ruta no existe o falla, y el informe dice cuál y por qué.
 
 ## Al recibir correcciones
 

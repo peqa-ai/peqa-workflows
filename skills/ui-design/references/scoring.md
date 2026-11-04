@@ -67,14 +67,16 @@ Un criterio que no aplica, como Textos en un cambio que no toca texto, lleva `nu
 
 ## Escala
 
-- 10: nada que cambiar
-- 9: detalles que solo se ven buscándolos
-- 8: correcto, con un defecto visible
+Las notas altas se ganan con evidencia. Ante la duda entre dos notas, pon la más baja.
+
+- 10: ninguna captura tiene nada que mejorar en este criterio; resérvalo para lo excepcional
+- 9: sin defectos visibles, solo detalles que hay que buscar
+- 8: correcto, con un defecto visible menor
 - 6 y 7: varios defectos visibles, o uno que entorpece el uso
 - 4 y 5: falla en partes importantes
 - 0 a 3: ausente o roto
 
-Cada nota por debajo de 10 nombra en su evidencia lo que falta, y cada nota de 8 o menos tiene al menos un hallazgo.
+Un criterio con algún hallazgo tiene como mucho 8, y cada nota de 8 o menos tiene al menos un hallazgo. Un 9 o un 10 explica en su evidencia por qué no merece uno menos; cualquier otra nota por debajo de 10 nombra lo que falta.
 
 ## Respuesta
 
@@ -92,7 +94,7 @@ Un único objeto JSON con los nueve criterios:
 }
 ```
 
-Las claves de `notas` son los criterios en minúsculas y sin tildes: `encargo`, `jerarquia`, `tipografia`, `color`, `sistema`, `adaptacion`, `interaccion`, `textos` y `caracter`. Una respuesta completa tiene los nueve, cada uno con nota y evidencia, y los hallazgos que pide la escala.
+Las claves de `notas` son los criterios en minúsculas y sin tildes: `encargo`, `jerarquia`, `tipografia`, `color`, `sistema`, `adaptacion`, `interaccion`, `textos` y `caracter`. Una respuesta completa tiene los nueve, cada uno con nota y evidencia, y cumple las reglas de la escala: un criterio con hallazgo y nota de 9 o 10 la deja incompleta.
 
 ## Resultado
 
@@ -100,17 +102,19 @@ Si una respuesta llega incompleta, relanza a ese revisor una vez con un encargo 
 
 La nota de cada revisor es la media de sus criterios con nota, y el resultado es la media de las notas de los revisores. Compara el valor sin redondear con los umbrales y muéstralo con dos decimales:
 
-- más de 9: prácticamente perfecto
-- más de 8 y hasta 9: bueno
-- 8 o menos: corrige y vuelve a puntuar
+- más de 9, con todas las notas en 8 o más: prácticamente perfecto
+- más de 8 y hasta 9, con todas las notas en 8 o más: bueno
+- 8 o menos, o alguna nota por debajo de 8 de cualquier revisor: corrige y vuelve a puntuar
 
-Un incumplimiento del [mínimo de calidad](critique.md#mínimo-de-calidad) se corrige con cualquier resultado. Si los revisores difieren en más de 2 puntos en un criterio, mira las capturas de ese criterio y di en el informe qué lectura sigues y por qué.
+Un hallazgo de una nota por debajo de 8 solo se descarta con evidencia de las capturas, del código o del brief, y la ronda siguiente recibe el motivo. Si corregirlo depende de una decisión de la persona, como adónde lleva un botón, pregúntala si el host admite preguntas. Aplica entretanto los demás hallazgos aceptados, sin lanzar otra ronda; la puntuación queda abierta y el informe lo dice. Con la respuesta, la siguiente ronda continúa la cuenta.
+
+Un incumplimiento del [mínimo de calidad](critique.md#mínimo-de-calidad) se corrige con cualquier resultado. Si los revisores difieren en más de 2 puntos en un criterio, mira las capturas de ese criterio y di en el informe qué lectura sigues y por qué; esa lectura decide qué hallazgos aceptas, y las notas quedan como llegaron.
 
 ## Rondas
 
-1. Clasifica cada hallazgo como aceptado o descartado, con un motivo tomado de las capturas o del código. Un único editor aplica los aceptados. Tras cualquier corrección, también fuera de una ronda, repite las comprobaciones del paso 5 y las capturas afectadas.
-2. Con un resultado de 8 o menos, puntúa de nuevo con encargos nuevos.
-3. Con un resultado de más de 8, la puntuación termina. Las correcciones posteriores se marcan como no puntuadas.
-4. Hay tres rondas como máximo por cambio. Si la tercera sigue en 8 o menos, corrige igualmente los hallazgos aceptados, márcalos como no puntuados y deja a la persona decidir si acepta el resultado o pide otra ronda.
+1. Clasifica cada hallazgo como aceptado o descartado, con un motivo tomado de las capturas, del código o del brief. Un único editor aplica los aceptados. Tras cualquier corrección, también fuera de una ronda, repite las comprobaciones del paso 5 y las capturas afectadas.
+2. Con la banda de corregir, puntúa de nuevo con encargos nuevos.
+3. Con la banda de bueno o de prácticamente perfecto, la puntuación termina. Las correcciones posteriores se marcan como no puntuadas.
+4. Hay tres rondas como máximo por cambio. Si la tercera no cierra, corrige igualmente los hallazgos aceptados, márcalos como no puntuados y deja a la persona decidir si acepta el resultado o pide más rondas; solo ella amplía el máximo.
 
 El informe da, por ronda, la nota de cada criterio y revisor, la media de cada revisor, el resultado y su banda, el modelo y el esfuerzo solicitados y efectivos, y cada hallazgo con su decisión. Un revisor ausente aparece con su motivo.

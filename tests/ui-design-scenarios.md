@@ -27,6 +27,8 @@ Repositorio sintético de las muestras con código: Ledgerline, una web React + 
 | Activación por descripción | Sesión real `claude -p --plugin-dir <checkout>` en copias de los fixtures web y SwiftUI, con una petición de interfaz que no nombra el skill y otros skills de diseño instalados | Carga `peqa-workflows:ui-design` desde el checkout |
 | Puntuación en sesión real | Sesión real `claude -p --plugin-dir <checkout>` en un sitio estático sintético con tokens, `.button` y `.card`: página de talleres enlazada desde la navegación, sin nombrar la puntuación | Guarda las capturas fuera del checkout; lanza un `Agent` con Opus y el Codex CLI a la vez, con el encargo sin autocrítica; calcula la media y sigue las rondas según el umbral |
 | Revisores por CLI | Ejecución directa de las dos formas de `scoring.md` sobre las mismas capturas y el mismo encargo | Cada revisor responde con los nueve criterios, evidencia y hallazgos en JSON; el host expone el modelo efectivo |
+| Escala exigente y mínimo por criterio | Ejecución directa de los dos revisores con la escala nueva sobre las mismas capturas y el mismo diff que puntuaron con la anterior | Bajan las notas altas, ningún criterio con hallazgo pasa de 8 y una nota por debajo de 8 obliga a corregir aunque la media supere 8 |
+| Mínimo por criterio, simulación | Simulación: media de 8,50 con un 5 por un botón sin destino, 9,33 con un 7 que contradice el brief, todo en 8, un 10 con hallazgo, tercera ronda con un 7 y 9,40 con contraste fallido | Corrige o pregunta cuando hay una nota bajo 8; descarta con el brief; el 10 con hallazgo se relanza como incompleto; solo la persona amplía las rondas |
 | Casos límite de la puntuación | Simulación: Codex ausente, media exacta de 8, 9,30 con contraste fallido, hijo de `dirige`, tercera ronda en 7,85, revisores con 4 puntos de diferencia, T3 con padre Codex, cambio solo de un token, Codex sin Claude CLI y 8,60 con correcciones menores | Sin sustituto del ausente; 8,00 corrige; el mínimo de calidad se corrige con cualquier nota; el hijo termina en el paso 6; la persona decide tras la tercera ronda; correcciones tras cerrar marcadas como no puntuadas |
 
 ## Control previo
@@ -159,10 +161,27 @@ Versión 0.15.0. Fixture sintético fuera del checkout: el sitio estático de un
 
   Las ambigüedades anteriores a este cambio siguen abiertas, y la simulación no se repitió.
 
+- **Escala exigente y mínimo por criterio.** Se pidió corregir con cualquier nota por debajo de 8, y que el 9 y el 10 cueste conseguirlos. Cambios en la escala:
+  - ante la duda, la nota más baja
+  - un criterio con hallazgo tiene como mucho 8
+  - un 9 o un 10 explica por qué no merece menos
+
+  Los dos revisores puntuaron de nuevo, por CLI, las mismas capturas y el mismo diff de la primera sesión.
+
+  | Revisor | Escala anterior | Escala nueva |
+  | --- | --- | --- |
+  | Opus | 8,56 | 7,89 |
+  | Codex | 9,22 | 8,22 |
+  | Resultado | 8,89, bueno | 8,06, corregir por Encargo 5 y 6, Tipografía 7 y Textos 7 |
+
+  Las notas de 10 pasaron de 9 a ninguna, y las de 9 o más, de 13 a 8 de 18. Ningún criterio con hallazgo superó 8.
+
+  Una simulación de seis casos encontró una banda sin nombre para más de 8 con una nota baja y un descarte que no admitía el brief. También faltaba qué hacer mientras se espera a la persona, y quién amplía las rondas. Se corrigieron sin repetirla.
+
 ## Pendiente
 
 - La puntuación no se probó en T3 ni con un padre Codex: solo en Claude Code sin T3 y con los dos CLIs ejecutados directamente. Tampoco se probó con el padre de `dirige` puntuando un cambio integrado.
-- Un resultado de más de 8 puede convivir con un criterio de 5 o 6. En las dos muestras, Encargo quedó bajo porque la inscripción no lleva a ninguna parte, y la rúbrica no tiene un mínimo por criterio.
+- La escala nueva se probó con una sola muestra por revisor y sin una sesión completa que haga las rondas.
 
 - Ninguna muestra nativa compiló ni capturó en un simulador o emulador.
 - Cada caso tuvo una sola muestra, y la activación por descripción dos.
