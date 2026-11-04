@@ -9,7 +9,7 @@ Este skill diseña desde el sistema del proyecto: cada color, medida y component
 
 Consulta el estado del [registro opcional de uso](../../references/usage.md) sin activarlo. Si el usuario ya lo habilitó y el entorno permite escribir, registra esta invocación con su ID y resultado.
 
-Si recibiste un encargo delegado que ya trae plan visual e inventario, lee los archivos del paso 1 que correspondan y [tipografía](references/typography.md), empieza en el paso 5 y trata ese plan como decidido. Los tokens, el tema y los componentes compartidos tienen el propietario que indique el encargo; si no eres tú y necesitas cambiarlos o añadir uno, pídeselo al padre y sigue con lo que no depende de ello.
+Si recibiste un encargo delegado que ya trae plan visual e inventario, lee los archivos del paso 1 que correspondan y [tipografía](references/typography.md), empieza en el paso 5 y trata ese plan como decidido. Termina en el paso 6 e informa desde el paso 5: el padre puntúa el cambio integrado. Los tokens, el tema y los componentes compartidos tienen el propietario que indique el encargo; si no eres tú y necesitas cambiarlos o añadir uno, pídeselo al padre y sigue con lo que no depende de ello.
 
 ## Pasos
 
@@ -61,16 +61,22 @@ Termina cuando cada hallazgo de las [comprobaciones](references/design-system.md
 
 ### 6. Criticar
 
-Si el entorno puede renderizar, captura con las herramientas de [evidencia visual](../../references/visual-evidence.md#screenshots) a 375 px, a 1440 px y, si la navegación colapsa, en el ancho más estrecho que aún la muestra completa, y mira cada captura. En una app en webview, como Tauri, Electron o Capacitor, esos anchos y los del mínimo de calidad son el tamaño mínimo y el típico de su ventana; una pantalla nativa sigue [sus capturas](references/native.md#capturas). Si la tarea cambia un flujo, captura también la pantalla de entrada y los resultados de éxito y de error.
+Si el entorno puede renderizar, captura con las herramientas de [evidencia visual](../../references/visual-evidence.md#screenshots) a 375 px, a 1440 px y, si la navegación colapsa, en el ancho más estrecho que aún la muestra completa, mira cada captura y guárdala fuera del checkout para el paso 7. En una app en webview, como Tauri, Electron o Capacitor, esos anchos y los del mínimo de calidad son el tamaño mínimo y el típico de su ventana; una pantalla nativa sigue [sus capturas](references/native.md#capturas). Si la tarea cambia un flujo, captura también la pantalla de entrada y los resultados de éxito y de error.
 
 Revisa el resultado con las [señales de UI generada](references/tells.md) y después con la [crítica](references/critique.md). Antes de cerrar, retira el elemento que menos aporta al encargo y anótalo en el informe.
 
 Termina cuando cada comprobación pasa o el informe nombra lo que falta.
 
+### 7. Puntuar
+
+Cada cambio visual se puntúa, y este skill ya autoriza los revisores. Lanza un subagente de Claude Opus y uno de Codex con la rúbrica sobre 10 de [puntuación](references/scoring.md), que dice cómo llamarlos en cada host. Un resultado de más de 8 es bueno y uno de más de 9, prácticamente perfecto. Con 8 o menos, corrige los hallazgos aceptados y vuelve a puntuar, hasta tres rondas.
+
+Termina cuando una ronda supera 8 o se agotan las tres, con las notas en el informe. Un revisor solo queda fuera si su ruta no existe o falla, y el informe dice cuál y por qué.
+
 ## Al recibir correcciones
 
-Cuando alguien señala un caso, busca en la pantalla cada elemento con la misma estructura y corrígelos todos antes de responder. Si guardas la lección, escríbela como patrón y no como el ejemplo.
+Cuando alguien, también un revisor, señala un caso, busca en la pantalla cada elemento con la misma estructura y corrígelos todos antes de responder. Si guardas la lección, escríbela como patrón y no como el ejemplo.
 
 ## Informe
 
-Termina con la frase de encuadre, el modo del sistema, el plan con sus fuentes, lo que cambió la prueba de intercambio, los componentes añadidos o con variantes nuevas, cada cambio visible en pantallas existentes, el resultado de las comprobaciones y lo que retiraste.
+Termina con la frase de encuadre, el modo del sistema, el plan con sus fuentes, lo que cambió la prueba de intercambio, los componentes añadidos o con variantes nuevas, cada cambio visible en pantallas existentes, el resultado de las comprobaciones, lo que retiraste y la puntuación de cada ronda.
