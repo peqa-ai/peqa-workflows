@@ -2,7 +2,7 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.15.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.15.1` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 

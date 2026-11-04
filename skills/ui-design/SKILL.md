@@ -63,7 +63,7 @@ Termina cuando cada hallazgo de las [comprobaciones](references/design-system.md
 
 Si el entorno puede renderizar, captura con las herramientas de [evidencia visual](../../references/visual-evidence.md#screenshots) a 375 px, a 1440 px y, si la navegación colapsa, en el ancho más estrecho que aún la muestra completa, mira cada captura y guárdala fuera del checkout para el paso 7. En una app en webview, como Tauri, Electron o Capacitor, esos anchos y los del mínimo de calidad son el tamaño mínimo y el típico de su ventana; una pantalla nativa sigue [sus capturas](references/native.md#capturas). Si la tarea cambia un flujo, captura también la pantalla de entrada y los resultados de éxito y de error.
 
-Revisa el resultado con las [señales de UI generada](references/tells.md) y después con la [crítica](references/critique.md). Antes de cerrar, retira el elemento que menos aporta al encargo y anótalo en el informe.
+Revisa el resultado con las [señales de UI generada](references/tells.md) y después con la [crítica](references/critique.md). Antes de cerrar, busca elementos prescindibles: retira los que no aporten al encargo y anótalos en el informe. Si todos cumplen una función clara, consérvalos y dilo.
 
 Termina cuando cada comprobación pasa o el informe nombra lo que falta.
 
@@ -79,4 +79,4 @@ Cuando alguien, también un revisor, señala un caso, busca en la pantalla cada 
 
 ## Informe
 
-Termina con la frase de encuadre, el modo del sistema, el plan con sus fuentes, lo que cambió la prueba de intercambio, los componentes añadidos o con variantes nuevas, cada cambio visible en pantallas existentes, el resultado de las comprobaciones, lo que retiraste y la puntuación de cada ronda.
+Termina con la frase de encuadre, el modo del sistema, el plan con sus fuentes, lo que cambió la prueba de intercambio, los componentes añadidos o con variantes nuevas, cada cambio visible en pantallas existentes, el resultado de las comprobaciones, lo que retiraste o por qué conservaste el conjunto y la puntuación de cada ronda.
