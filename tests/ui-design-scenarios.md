@@ -31,6 +31,13 @@ Repositorio sintético de las muestras con código: Ledgerline, una web React + 
 | Rediseño con rondas | Sesión real `claude -p --plugin-dir <checkout>` en una pantalla de órdenes de un taller de bicis: tabla de 12 px que desborda en el móvil, estado solo con puntos de color, `id`, `data-testid` y `data-estado` usados por pruebas. La petición pide legibilidad en el móvil y distinguir listas y retrasadas, sin nombrar la puntuación | Rondas con encargos nuevos hasta cerrar o agotar tres; corrige con una nota bajo 8 aunque la media supere 8; conserva los contratos; deja la decisión a la persona si la tercera no cierra |
 | Mínimo por criterio, simulación | Simulación: media de 8,50 con un 5 por un botón sin destino, 9,33 con un 7 que contradice el brief, todo en 8, un 10 con hallazgo, tercera ronda con un 7 y 9,40 con contraste fallido | Corrige o pregunta cuando hay una nota bajo 8; descarta con el brief; el 10 con hallazgo se relanza como incompleto; solo la persona amplía las rondas |
 | Casos límite de la puntuación | Simulación: Codex ausente, media exacta de 8, 9,30 con contraste fallido, hijo de `dirige`, tercera ronda en 7,85, revisores con 4 puntos de diferencia, T3 con padre Codex, cambio solo de un token, Codex sin Claude CLI y 8,60 con correcciones menores | Sin sustituto del ausente; 8,00 corrige; el mínimo de calidad se corrige con cualquier nota; el hijo termina en el paso 6; la persona decide tras la tercera ronda; correcciones tras cerrar marcadas como no puntuadas |
+| Etiquetas de distinta longitud | Simulación: seis acciones independientes en dos columnas iguales; una etiqueta ordinaria envuelve y `auto-rows: 1fr` eleva todas las filas; un nombre excepcional también excede el ancho móvil completo | Ajusta el reparto de ancho antes de envolver; mantiene la altura base de las etiquetas cortas y permite crecer a la excepcional; no trunca información esencial ni inventa un badge para resolver el ancho |
+| Densidad móvil | Simulación: seis acciones ordenadas por urgencia ocupan 312 px y desplazan el resumen fuera de la primera pantalla; dos son críticas | Evalúa la vista completa y propone un subconjunto con expansión si mejora el acceso al resumen; mantiene las dos críticas y el orden; justifica la cantidad por el contenido |
+| Conjunto pequeño | Simulación: dos acciones y el resumen caben holgadamente en el móvil; se pide ordenar la pantalla | Conserva ambas visibles; no añade «Mostrar más» ni aplica un número fijo de acciones |
+| Expansión y visibilidad | Simulación: el cuarto acceso registra una impresión al montar; CSS colapsa bajo `48rem` y JS decide visibilidad con `768px`; navegador a 20 px y viewport de 850 px, con borrador y cambio de cuenta | Reconoce la discrepancia entre consultas; misma unidad y valor; la opción oculta no registra impresión; preserva alcance y deduplicación, borrador, cuota y foco; control accesible y controles ocultos fuera del recorrido |
+| Cero, vacío y error parcial | Simulación: valor actual cero con historial y previsión; otro bloque sin datos ni referencias; un tercero falla mientras la página sigue operativa | Conserva el gráfico con contexto útil; vacío con primera acción y sin leyenda huérfana para el segundo; error y reintento específicos para el tercero |
+| Columnas desiguales | Simulación: dos columnas con bloques de 280 y 480 px alineados por filas, sin comparaciones entre filas; un compositor guarda el borrador en estado local | Considera pilas independientes; conserva orden DOM, lectura y teclado en ambos tamaños, borrador y foco al cambiar de ancho |
+| Captura durante entrada | Simulación: datos recibidos y red inactiva a los 100 ms; barras con entrada de 500 ms y fuente que termina a los 250 ms; la captura inicial parece incompleta | Espera fuentes y estado visible final de las animaciones finitas; etiqueta por separado la transición; no usa tests aprobados ni una espera fija como prueba visual |
 
 ## Control previo
 
@@ -194,6 +201,23 @@ Versión 0.15.0. Fixture sintético fuera del checkout: el sitio estático de un
   - En la ronda 2, Opus respondió en inglés a un encargo en español. «Respuesta» pide ahora la evidencia y los hallazgos en el idioma del brief.
   - Para capturar, instaló Playwright con `npm` en `/tmp` en lugar de usar las herramientas del host, que la referencia de evidencia visual pide usar. No se cambió el texto.
   - Costó 5,44 USD.
+
+## Aplicación de referencias observada el 4 de noviembre de 2026
+
+Los siete casos nuevos parten de problemas observados al ajustar una interfaz de producto: filas elevadas por una sola etiqueta, una pila móvil que desplazaba el resumen, efectos de una acción oculta, ceros sin contexto, errores parciales y capturas durante una animación. Son una base de regresión de uso real, no un experimento controlado con y sin el skill.
+
+Dos subagentes con contexto fresco aplicaron las referencias actualizadas a los siete casos sintéticos, sin leer esta tabla ni sus resultados esperados. Propusieron cambios concretos y comprobaciones, sin editar, renderizar, ejecutar pruebas ni lanzar el panel visual:
+
+- En etiquetas y columnas desiguales, propusieron anchos por contenido y pilas independientes, conservando orden y estado. No inventaron badges ni fijaron la altura de todo el grupo a la etiqueta más larga.
+- Para la pila móvil propusieron mostrar las dos acciones críticas y expandir las restantes, dejando la cantidad sujeta al espacio real. Para el conjunto pequeño conservaron ambas acciones visibles.
+- Detectaron que `48rem` y `768px` discrepan con fuente predeterminada de 20 px y viewport de 850 px, y que montar la cuarta acción no acredita su exposición. Mantuvieron foco, borrador, cuota y deduplicación por cuenta y día en la propuesta.
+- Separaron el cero con historial y previsión, el vacío sin referencias y el fallo parcial con reintento propio. Exigieron fuentes y animaciones asentadas para la captura final; no tomaron Vitest como evidencia visual.
+
+La primera muestra señaló que la orden anterior de retirar siempre un elemento contradecía el conjunto pequeño útil. Se cambió el paso de crítica y su informe para retirar solo lo prescindible. Una tercera muestra, también con contexto fresco, conservó las dos acciones necesarias de una biblioteca y explicó que el cambio mínimo podía ser ninguno. Señaló además tensiones previas sobre cabeceras y texto atenuado, fuera de este ajuste; no se evaluaron en un render.
+
+Validación estática: 165 tests del repositorio aprobados; `quick_validate.py` aprobado con PyYAML en un entorno temporal de `uv`; 25 enlaces y anclas locales comprobados; tres manifiestos coherentes en `0.15.1`; `git diff --check` limpio. `claude plugin validate` aprobó con avisos sobre descripción del marketplace, `CLAUDE.md` raíz e icono, archivos ajenos al cambio. La selección de revisores y el presupuesto de rondas no cambiaron.
+
+Límites: una aplicación por caso y una repetición del conjunto pequeño; son simulaciones de decisiones, no pruebas de una UI implementada, estabilidad estadística ni una nueva puntuación visual.
 
 ## Pendiente
 

@@ -51,6 +51,8 @@ Conjunto mínimo al establecer:
 
 Usa el mecanismo que ya tiene el stack: custom properties mapeadas al tema de Tailwind si hay Tailwind, el objeto de tema de la biblioteca si hay una biblioteca, y propiedades en `:root` en los demás casos. Una herramienta de build de tokens es una dependencia nueva y necesita un motivo que aporte la tarea. Los componentes usan el mecanismo de estilos que ya tiene el proyecto, como CSS Modules, Tailwind o CSS-in-JS; en un proyecto nuevo, el que trae el stack, como CSS Modules en Vite.
 
+Si la lógica de la aplicación depende de un breakpoint visual, comparte su consulta con CSS, incluidos el valor y la unidad. En web, `48rem` en CSS y `768px` en `matchMedia` pueden discrepar al cambiar el tamaño de fuente predeterminado del navegador. Comprueba ambos lados del umbral con ese ajuste, además del texto ampliado.
+
 ## Componentes
 
 - Busca por función antes de crear nada: botón, enlace, input, select, checkbox, diálogo, tarjeta, badge, pestañas, tabla. Cada función tiene un componente.
@@ -63,7 +65,7 @@ Usa el mecanismo que ya tiene el stack: custom properties mapeadas al tema de Ta
 - La navegación de escritorio cabe en una línea en el ancho más estrecho en que se muestra. Si no cabe, acorta etiquetas, retira las secundarias o adelanta el colapso.
 - Cada componente interactivo define hover, focus-visible, active y disabled, y loading cuando una acción espera.
 - El tamaño visible no es el área táctil. Un control puede verse compacto, de unos 28 px de alto, y extender su área táctil hasta 44 px de alto en teléfono con un pseudo-elemento posicionado (`::before` con `inset` negativo), sin solaparse con la del vecino.
-- Todas las instancias de un control comparten alto y radio, sea cual sea el largo de su etiqueta. Un ancho mínimo igual al alto convierte las etiquetas cortas en círculos y deja las largas como pastillas.
+- Las instancias de una variante comparten altura base, radio y relleno. Ajusta el ancho al contenido antes de envolver; cuando una etiqueta larga necesita varias líneas, permite que crezca ese control sin imponer su altura a todo el grupo. Las opciones compactas de un selector conservan un alto común; un ancho mínimo igual al alto deja las cortas circulares y las largas como pastillas. Para grupos de acciones, revisa [su distribución y densidad](product-ui.md#acciones-y-primera-pantalla).
 - El layout es dueño del espaciado. Los componentes no llevan margen exterior y los contenedores fijan `gap`. Así terminan las peleas de márgenes entre secciones.
 - Las secciones comparten una anatomía (título, acciones y contenido) y reutilizan un solo juego de piezas internas. Las variantes hechas a mano en cada sección se leen como generadas.
 - Las acciones de una cabecera van en la línea de su título. Antes de bajarlas a otra línea, compáctalas con menos relleno y menos espacio entre botones. Solo bajan en el ancho más angosto, y el informe dice desde qué ancho caben en la misma línea.
@@ -74,6 +76,10 @@ Usa el mecanismo que ya tiene el stack: custom properties mapeadas al tema de Ta
 ## Contratos invisibles
 
 Un rediseño cambia lo que se ve y conserva lo que otros usan sin verlo: los `id` y las anclas, el `name` y el orden de los campos, `autocomplete`, los `data-*` de pruebas y analítica, las rutas, los metadatos (título, Open Graph, datos estructurados), los textos legales y de consentimiento, y las etiquetas de navegación. Cambiar uno de ellos necesita que lo pidan el brief o el usuario.
+
+Cuando introduces expansión o colapso, conserva borradores, selección y contexto. Mostrar u ocultar opciones no ejecuta ninguna de ellas ni consume su cuota. En web, usa un botón con `aria-expanded` y `aria-controls` hacia la región controlada; los controles ocultos quedan fuera del recorrido de teclado y del árbol de accesibilidad. Si el elemento enfocado va a ocultarse, devuelve el foco al control de expansión. En nativo, usa las equivalencias de la plataforma.
+
+Revisa también los efectos asociados a la visibilidad: montar una acción oculta no cuenta como haberla mostrado. Conserva el alcance y la deduplicación de impresiones, avisos y cuotas del producto, incluidos cambios de cuenta o de sesión. Prueba expandir, contraer y cruzar el breakpoint; comprueba qué se ve, qué recibe foco y qué efectos se registran.
 
 El subcomando `contracts` del [helper](#comprobaciones) lista los atributos retirados que no vuelven a aparecer en ninguna línea añadida. Revisa a mano lo que un diff de atributos no muestra: los atributos que llegan por spread o por una expresión compuesta, que un componente que envuelve el control los reenvía al elemento del DOM, y los contratos que no son atributos, como metadatos y textos legales.
 

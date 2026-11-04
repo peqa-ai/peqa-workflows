@@ -15,6 +15,8 @@ Explica con texto los cambios de documentación, formato, renombres o versiones 
 ## Screenshots
 
 - Captura con un navegador automatizado ya disponible, como Playwright, o con las pruebas E2E del proyecto; para apps móviles, con el simulador o dispositivo que exponga el host. Si no puedes ejecutar la interfaz, declara la evidencia visual pendiente y continúa.
+- Para el estado asentado, espera los datos y las fuentes pertinentes, y que terminen las animaciones finitas de entrada o de las gráficas. Comprueba una condición visible del estado esperado; una espera fija o la red en reposo no prueban que la interfaz haya terminado de dibujarse. Las capturas de carga o transición se etiquetan como tales, separadas de las finales.
+- Si cambia una expansión, captura contraído y expandido. Si cambian distribución o etiquetas, incluye contenido largo, texto ampliado y la primera pantalla móvil, además del recorrido completo afectado. Distingue lo visto de lo comprobado solo por código o tests; lo que no capturaste queda como límite de evidencia.
 - Usa datos de prueba. Antes de mostrar o subir una imagen, comprueba que no muestra secretos, datos personales, tokens ni rutas privadas; vuelve a capturar si hace falta.
 - Guarda las imágenes en un directorio temporal de la ejecución, fuera del árbol de trabajo. Con `dirige`, anótalas como evidencia en [el registro de recursos](../skills/dirige/references/cleanup.md).
 - Escribe un texto alternativo que describa lo que se ve: `![Formulario con el botón Guardar deshabilitado tras un error de red](/ruta/absoluta/guardar-error.png)`.
