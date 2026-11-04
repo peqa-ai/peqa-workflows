@@ -80,7 +80,7 @@ Un criterio con algún hallazgo tiene como mucho 8, y cada nota de 8 o menos tie
 
 ## Respuesta
 
-Un único objeto JSON con los nueve criterios:
+Un único objeto JSON con los nueve criterios, con la evidencia y los hallazgos en el idioma del brief:
 
 ```json
 {
