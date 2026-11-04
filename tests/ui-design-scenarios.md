@@ -25,6 +25,12 @@ Repositorio sintético de las muestras con código: Ledgerline, una web React + 
 | Compose | Ejecución sin compilar en el tema de la plantilla de Android Studio con color dinámico activo y un color institucional en el brief: préstamos con Renovar | Decide sobre el color dinámico; tema con espaciado en un `CompositionLocal`; `testTag` conservado; 48 dp; capturas pendientes |
 | Casos aplazados | Simulación: plantilla de Vite, acento compartido más oscuro, plataforma con patrones propios, testimonios con menú que colapsa, registro con `<Input>` propio y entorno sin Python | Establece y retira la demo; token nuevo o corrección global según el contraste; la plataforma manda; contratos con el helper y reenvío al DOM revisado a mano; comprobaciones pendientes sin Python |
 | Activación por descripción | Sesión real `claude -p --plugin-dir <checkout>` en copias de los fixtures web y SwiftUI, con una petición de interfaz que no nombra el skill y otros skills de diseño instalados | Carga `peqa-workflows:ui-design` desde el checkout |
+| Puntuación en sesión real | Sesión real `claude -p --plugin-dir <checkout>` en un sitio estático sintético con tokens, `.button` y `.card`: página de talleres enlazada desde la navegación, sin nombrar la puntuación | Guarda las capturas fuera del checkout; lanza un `Agent` con Opus y el Codex CLI a la vez, con el encargo sin autocrítica; calcula la media y sigue las rondas según el umbral |
+| Revisores por CLI | Ejecución directa de las dos formas de `scoring.md` sobre las mismas capturas y el mismo encargo | Cada revisor responde con los nueve criterios, evidencia y hallazgos en JSON; el host expone el modelo efectivo |
+| Escala exigente y mínimo por criterio | Ejecución directa de los dos revisores con la escala nueva sobre las mismas capturas y el mismo diff que puntuaron con la anterior | Bajan las notas altas, ningún criterio con hallazgo pasa de 8 y una nota por debajo de 8 obliga a corregir aunque la media supere 8 |
+| Rediseño con rondas | Sesión real `claude -p --plugin-dir <checkout>` en una pantalla de órdenes de un taller de bicis: tabla de 12 px que desborda en el móvil, estado solo con puntos de color, `id`, `data-testid` y `data-estado` usados por pruebas. La petición pide legibilidad en el móvil y distinguir listas y retrasadas, sin nombrar la puntuación | Rondas con encargos nuevos hasta cerrar o agotar tres; corrige con una nota bajo 8 aunque la media supere 8; conserva los contratos; deja la decisión a la persona si la tercera no cierra |
+| Mínimo por criterio, simulación | Simulación: media de 8,50 con un 5 por un botón sin destino, 9,33 con un 7 que contradice el brief, todo en 8, un 10 con hallazgo, tercera ronda con un 7 y 9,40 con contraste fallido | Corrige o pregunta cuando hay una nota bajo 8; descarta con el brief; el 10 con hallazgo se relanza como incompleto; solo la persona amplía las rondas |
+| Casos límite de la puntuación | Simulación: Codex ausente, media exacta de 8, 9,30 con contraste fallido, hijo de `dirige`, tercera ronda en 7,85, revisores con 4 puntos de diferencia, T3 con padre Codex, cambio solo de un token, Codex sin Claude CLI y 8,60 con correcciones menores | Sin sustituto del ausente; 8,00 corrige; el mínimo de calidad se corrige con cualquier nota; el hijo termina en el paso 6; la persona decide tras la tercera ronda; correcciones tras cerrar marcadas como no puntuadas |
 
 ## Control previo
 
@@ -126,8 +132,73 @@ Segunda tanda: un agente nuevo repitió solo los casos corregidos (botón de Swi
 
 Validación estática: `python3 -m unittest discover -s tests -v`, enlaces relativos y anclas comprobados con un script, y `git diff --check` limpio. Los comandos de `adb` de `native.md` no se ejecutaron en un dispositivo.
 
+## Puntuación observada el 3 de noviembre de 2026
+
+Versión 0.15.0. Fixture sintético fuera del checkout: el sitio estático de un huerto comunitario, con tokens, `.button` y `.card`. La petición fue una página de talleres enlazada desde la navegación, sin mencionar la puntuación.
+
+- **Primera sesión real.** Cargó `ui-design`, construyó la página, ejecutó el helper y capturó a 375, 320 y 1440 px. No leyó `scoring.md`, borró las capturas y cerró con «No he pedido la puntuación a revisores independientes». El paso 7 decía «Pide» y «los que estén disponibles», y el paso 6 no pedía guardar las capturas. Se corrigió así:
+  - El paso 7 dice que cada cambio visual se puntúa y que el skill autoriza los revisores.
+  - Un revisor solo queda fuera si su ruta no existe o falla.
+  - El paso 6 guarda las capturas fuera del checkout.
+- **Segunda sesión real.** Se ejecutó con el texto corregido, sobre una copia limpia del fixture.
+  - Copió las capturas a una carpeta temporal y comprobó `codex --version` y `codex login status`.
+  - Lanzó a la vez un `Agent` con `model: "opus"` y `codex exec` con `gpt-6.1-sol` en `xhigh` y las dos capturas adjuntas.
+  - El encargo llevaba el brief, el encuadre, las capturas, la base y las secciones copiadas, sin autocrítica.
+  - Opus dio 7,78 y Codex 9,00, con un resultado de 8,39 («bueno»).
+  - Corrigió los hallazgos que aceptó y repitió el helper y las capturas. Marcó esas correcciones como no puntuadas y explicó los tres hallazgos que descartó.
+  - El encargo copiaba también una frase dirigida al padre, la de relanzar una respuesta incompleta. Se movió a «Resultado».
+- **Revisores por CLI.** Se ejecutaron directamente sobre la página de la primera sesión, con el resultado de 8,89 («bueno»).
+  - `claude -p --model opus`, solo con herramientas de lectura, respondió con JSON válido y los nueve criterios. Dio 8,56, y el host expuso `claude-opus-5-5`.
+  - `codex exec`, con `-i` antes de `--model`, respondió igual y dio 9,22. Sus eventos no exponen el modelo efectivo.
+  - Los dos pusieron un 5 o un 6 en Encargo, porque «Inscribirme» lleva a una página sin formulario.
+- **Simulación de casos límite.** Un agente nuevo recorrió los diez casos de la tabla y señaló ambigüedades. Se corrigieron las que cambian la conducta:
+  - la ruta de Codex en T3 y el esfuerzo de Opus
+  - cómo comprobar Claude Code CLI y la ausencia de sustitutos
+  - qué hacer con una respuesta incompleta y cuándo redondear
+  - repetir las comprobaciones tras correcciones fuera de una ronda
+  - qué decide la persona tras la tercera ronda
+  - el informe del hijo y el criterio Sistema frente a los cambios permitidos
+  - el `--add-dir` del skill y las capturas web sin apariencia
+
+  Las ambigüedades anteriores a este cambio siguen abiertas, y la simulación no se repitió.
+
+- **Escala exigente y mínimo por criterio.** Se pidió corregir con cualquier nota por debajo de 8, y que el 9 y el 10 cueste conseguirlos. Cambios en la escala:
+  - ante la duda, la nota más baja
+  - un criterio con hallazgo tiene como mucho 8
+  - un 9 o un 10 explica por qué no merece menos
+
+  Los dos revisores puntuaron de nuevo, por CLI, las mismas capturas y el mismo diff de la primera sesión.
+
+  | Revisor | Escala anterior | Escala nueva |
+  | --- | --- | --- |
+  | Opus | 8,56 | 7,89 |
+  | Codex | 9,22 | 8,22 |
+  | Resultado | 8,89, bueno | 8,06, corregir por Encargo 5 y 6, Tipografía 7 y Textos 7 |
+
+  Las notas de 10 pasaron de 9 a ninguna, y las de 9 o más, de 13 a 8 de 18. Ningún criterio con hallazgo superó 8.
+
+  Una simulación de seis casos encontró una banda sin nombre para más de 8 con una nota baja y un descarte que no admitía el brief. También faltaba qué hacer mientras se espera a la persona, y quién amplía las rondas. Se corrigieron sin repetirla.
+
+- **Rediseño con rondas, el 4 de noviembre de 2026.** Fue una sesión real sobre la escala exigente, con un fixture de un taller de bicis. La pantalla original era una tabla de 12 px que medía 493 px a 375 y marcaba el estado con puntos de color.
+  - Hizo las tres rondas sola, con un `Agent` Opus y `codex exec` a la vez y un encargo nuevo por ronda.
+
+    | Ronda | Opus | Codex | Resultado | Notas por debajo de 8 |
+    | --- | --- | --- | --- | --- |
+    | 1 | 7,44 | 8,22 | 7,83 | 5 |
+    | 2 | 7,44 | 8,56 | 8,00 | 5 |
+    | 3 | 8,44 | 8,67 | 8,56 | 2 |
+
+  - En la ronda 3 la media superaba 8, pero dos notas de 7 la mantuvieron en «corregir». La sesión corrigió esas dos notas, marcó los cambios como no puntuados y dejó a la persona decidir si aceptaba el resultado.
+  - Ninguna de las 54 notas fue un 10.
+  - Entre rondas, repitió el helper y las capturas. Conservó `id`, `data-testid`, `data-estado` y `name`, y avisó de los textos de botón y del orden de filas que cambiaron.
+  - En la ronda 2, Opus respondió en inglés a un encargo en español. «Respuesta» pide ahora la evidencia y los hallazgos en el idioma del brief.
+  - Para capturar, instaló Playwright con `npm` en `/tmp` en lugar de usar las herramientas del host, que la referencia de evidencia visual pide usar. No se cambió el texto.
+  - Costó 5,44 USD.
+
 ## Pendiente
 
+- La puntuación no se probó en T3 ni con un padre Codex: solo en Claude Code sin T3 y con los dos CLIs ejecutados directamente. Tampoco se probó con el padre de `dirige` puntuando un cambio integrado.
+- La escala exigente tiene dos muestras: una recalificación por CLI y una sesión completa. La regla del idioma no se probó.
 - Ninguna muestra nativa compiló ni capturó en un simulador o emulador.
 - Cada caso tuvo una sola muestra, y la activación por descripción dos.
 - Las ambigüedades menores de la última tanda siguen abiertas: el modo de una app nativa sin tema, el contraste con color dinámico conservado y los anchos de teléfono distintos entre referencias.
