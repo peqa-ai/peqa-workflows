@@ -2,7 +2,7 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.13.1` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.14.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -55,29 +55,35 @@ En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entor
 
 ## Diseño de interfaces
 
-Desde `0.13.0`, `ui-design` construye o rediseña interfaces web desde el sistema de diseño del proyecto. Antes de diseñar busca tokens, tema y componentes, y los reutiliza: una página nueva no recrea botones ni estilos. La identidad visual vive en los valores de los tokens y en un único elemento distintivo.
+Desde `0.13.0`, `ui-design` construye o rediseña interfaces desde el sistema de diseño del proyecto. Antes de diseñar busca tokens, tema y componentes, y los reutiliza: una pantalla nueva no recrea botones ni estilos. La identidad visual vive en los valores de los tokens y en un único elemento distintivo. En `0.14.0` cubre también pantallas nativas en SwiftUI y Jetpack Compose, y comprueba el diff con un helper.
 
 ```mermaid
 flowchart TD
     accTitle: Cómo trabaja ui-design con el sistema de diseño
-    accDescr: ui-design inventaría los tokens y componentes del proyecto. Si hay un sistema en uso, lo extiende; si hay estilos dispersos, consolida lo que toca la tarea; si no hay nada, establece un sistema mínimo. Después planifica con fuentes, aplica la prueba de intercambio, construye desde el sistema y critica el resultado.
+    accDescr: ui-design acepta interfaces web, incluidas las apps en webview, y pantallas nativas en SwiftUI o Jetpack Compose, y las lleva por el mismo proceso. Inventaría los tokens y componentes del proyecto. Si hay un sistema en uso, lo extiende; si hay estilos dispersos, consolida lo que toca la tarea; si no hay nada, establece un sistema mínimo. Después planifica con fuentes, aplica la prueba de intercambio, construye desde el sistema, comprueba el diff con el helper y critica el resultado.
 
+    web["Web<br/>Navegador o webview"]
+    nativa["Nativa<br/>SwiftUI o Compose"]
     inventario["Inventario<br/>Tokens y componentes"]
     extender["Extender<br/>Sistema en uso"]
     consolidar["Consolidar<br/>Estilos dispersos"]
     establecer["Establecer<br/>Sistema mínimo"]
     plan["Plan con fuentes<br/>Prueba de intercambio"]
-    construir["Construir<br/>Tokens, componentes, página"]
-    critica["Crítica<br/>Señales y mínimo de calidad"]
+    construir["Construir<br/>Tokens, componentes, pantalla"]
+    helper["Helper<br/>Literales y contratos"]
+    critica["Crítica<br/>Capturas, señales y mínimo de calidad"]
 
+    web & nativa --> inventario
     inventario --> extender & consolidar & establecer
-    extender & consolidar & establecer --> plan --> construir --> critica
+    extender & consolidar & establecer --> plan --> construir --> helper --> critica
 ```
 
 - Cada color, tipo y recurso de layout del plan indica su fuente: el brief, el sistema, una restricción de accesibilidad o un objeto del mundo del tema. La prueba de intercambio compara el plan con el que se haría para un competidor y sustituye lo que coincide.
-- Al construir, los valores literales solo viven en los archivos de tokens y cada diferencia es una variante del componente existente. Unas búsquedas sobre los archivos modificados lo comprueban.
-- Un rediseño conserva lo que otros usan sin verlo: `id` y anclas, nombres de campos, atributos de prueba y analítica, rutas y metadatos.
-- Las páginas existentes conservan su aspecto. Los cambios del sistema que se notarían en ellas llegan como propuesta en el informe, salvo los que corrigen contraste, foco u otro mínimo de calidad.
+- Al construir, los valores literales solo viven en los archivos de tokens y cada diferencia es una variante del componente existente. El helper `ui_checks.py` lo comprueba sobre las líneas añadidas respecto a la base, lista los contratos retirados y mide el contraste. Si no puede ejecutarse, el informe deja esa comprobación pendiente. Consulta [las comprobaciones](skills/ui-design/references/design-system.md#comprobaciones).
+- Un rediseño conserva lo que otros usan sin verlo: `id` y anclas, nombres de campos, atributos de prueba y analítica, rutas, deep links y metadatos.
+- Las pantallas existentes conservan su aspecto. Los cambios del sistema que se notarían en ellas llegan como propuesta en el informe, salvo los que corrigen contraste, foco u otro mínimo de calidad.
+- En una app nativa, los componentes de la plataforma son la base y el tema del proyecto les da su identidad. La crítica mide áreas táctiles de 44 pt en iOS y 48 dp en Android, el texto al tamaño máximo del sistema y el modo oscuro. Consulta [pantallas nativas](skills/ui-design/references/native.md).
+- Una app en webview, como Tauri, Electron o Capacitor, sigue la ruta web con el tamaño mínimo y el típico de su ventana.
 - La lista de señales de UI generada se usa después de construir, como auditoría. Si el brief pide uno de esos estilos, se sigue el brief.
 - Las capturas de la crítica usan las herramientas de la [evidencia visual](#evidencia-visual).
 
@@ -249,4 +255,4 @@ Antes de añadir o modificar un skill, lee las [convenciones del proyecto](AGENT
 
 ## Fuentes
 
-La entrevista toma como referencia conceptual a [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias. `ui-design` parte de una revisión del skill [`frontend-design`](https://github.com/anthropics/claude-plugins-public/tree/main/plugins/frontend-design) de Anthropic y de otros skills de diseño, y de las pruebas registradas en [sus escenarios](tests/ui-design-scenarios.md). El empaquetado sigue las referencias de [OpenAI](https://developers.openai.com/plugins/build/plugins) y [Claude Code](https://code.claude.com/docs/en/plugins-reference); los contratos de T3 se citan en [herramientas del entorno](references/runtime-tools.md).
+La entrevista toma como referencia conceptual a [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias. `ui-design` parte de una revisión del skill [`frontend-design`](https://github.com/anthropics/claude-plugins-public/tree/main/plugins/frontend-design) de Anthropic y de otros skills de diseño, y de las pruebas registradas en [sus escenarios](tests/ui-design-scenarios.md). Sus medidas de contraste y de pantallas nativas citan WCAG, Apple y Android en [crítica](skills/ui-design/references/critique.md) y [pantallas nativas](skills/ui-design/references/native.md#fuentes). El empaquetado sigue las referencias de [OpenAI](https://developers.openai.com/plugins/build/plugins) y [Claude Code](https://code.claude.com/docs/en/plugins-reference); los contratos de T3 se citan en [herramientas del entorno](references/runtime-tools.md).

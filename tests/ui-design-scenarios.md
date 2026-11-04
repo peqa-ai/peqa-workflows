@@ -20,6 +20,11 @@ Repositorio sintético de las muestras con código: Ledgerline, una web React + 
 | Landing sin recursos | Simulación: landing de un taller de cerámica sin fotos ni testimonios, leída sobre todo en el móvil, con seis enlaces y un botón Reservar | Primera pantalla con la acción visible a 1440×900 y 390×844; cifras marcadas como ejemplo; ninguna vista falsa del producto; movimiento solo como respuesta; navegación en una línea antes del colapso |
 | Rediseño de formulario | Simulación: registro con campos rotulados solo por placeholder, `data-testid` y errores en un toast | Conserva `id`, `name`, `autoComplete` y `data-testid`; etiquetas visibles; error bajo el campo con `aria-describedby`; toast solo para el éxito; capturas de entrada, error y éxito |
 | Sistema de plataforma | Simulación: pantalla de ajustes de una extensión dentro del panel de una plataforma con sistema oficial; el repositorio no tiene tokens | Modo extender con el paquete oficial; la identidad sale de agrupación, textos y vista previa, no de un sistema propio |
+| Web con navegador | Ejecución en un sitio estático sintético con tokens, `.button`, `.card` y un menú que colapsa a 900 px: página de precios con tres tarifas y preguntas frecuentes, enlazada desde la navegación | Capturas a 375, 1440 px y en el ancho previo al colapso; helper `literals`, `contracts` y `contrast` con hallazgos corregidos o justificados; las demás páginas conservan su aspecto |
+| SwiftUI | Ejecución sin compilar en un fixture SwiftUI con color sets claro/oscuro, `Theme.swift`, un `ButtonStyle` y UI tests con `accessibilityIdentifier`: Ajustes por secciones con tarjeta de plan | Lee `native.md`; modo extender sobre componentes de la plataforma; tokens con variante oscura; identificadores conservados; capturas declaradas pendientes |
+| Compose | Ejecución sin compilar en el tema de la plantilla de Android Studio con color dinámico activo y un color institucional en el brief: préstamos con Renovar | Decide sobre el color dinámico; tema con espaciado en un `CompositionLocal`; `testTag` conservado; 48 dp; capturas pendientes |
+| Casos aplazados | Simulación: plantilla de Vite, acento compartido más oscuro, plataforma con patrones propios, testimonios con menú que colapsa, registro con `<Input>` propio y entorno sin Python | Establece y retira la demo; token nuevo o corrección global según el contraste; la plataforma manda; contratos con el helper y reenvío al DOM revisado a mano; comprobaciones pendientes sin Python |
+| Activación por descripción | Sesión real `claude -p --plugin-dir <checkout>` en copias de los fixtures web y SwiftUI, con una petición de interfaz que no nombra el skill y otros skills de diseño instalados | Carga `peqa-workflows:ui-design` desde el checkout |
 
 ## Control previo
 
@@ -96,9 +101,34 @@ Ambigüedades corregidas después, sin otra simulación:
 - Faltaba qué hacer cuando los patrones de una plataforma chocan con las preferencias del skill.
 - CSS no acepta custom properties en `@media`, y los breakpoints figuraban como tokens.
 
+## Resultado observado el 3 de noviembre de 2026
+
+Versión 0.14.0: entrada reducida a unas 970 palabras con `critique.md`, referencia `native.md` y helper `scripts/ui_checks.py`, cubierto por `tests/test_ui_checks.py`. Fixtures sintéticos fuera del checkout: un sitio estático de un taller de cerámica, una app SwiftUI de recordatorios de medicación y una app Compose de una biblioteca municipal.
+
+Primera tanda: una ejecución con navegador, dos ejecuciones nativas sin compilar, una simulación de seis casos y dos sesiones reales de Claude Code.
+
+- **Web con navegador.** Eligió extender, creó `precios.html` y la enlazó desde las tres páginas. Capturó a 375, 901 y 1440 px, la primera pantalla a 390×844 y 1440×900, y la cabecera a 320 px. Midió también 360 y 390 px. Ejecutó `literals`, `contracts` y `contrast`; justificó los `raw_control` del `<button class="button">` heredado y los filetes decorativos de 1.26:1. Marcó los precios con `data-ejemplo`. El menú sin script, el alto de 62 px de `.button` y el color de la marca quedaron como propuestas. Comparó la home antes y después: idéntica a 375 px y solo cambia la zona del menú a 1440 px.
+- **SwiftUI.** Leyó `native.md`. Extendió el tema con tres color sets con variante oscura, creó `PlanCard` sobre componentes de la plataforma con `ViewThatFits`, añadió el estado disabled al `ButtonStyle` y conservó los cuatro `accessibilityIdentifier`. Midió el contraste en claro y oscuro con el helper. Hizo `swiftc -typecheck` contra el SDK de iOS por iniciativa propia y declaró pendientes las capturas. Usó `Button` para navegar porque `native.md` no traducía la regla web de enlace frente a botón.
+- **Compose.** Eligió establecer sobre la plantilla, desactivó el color dinámico para conservar el verde del brief y añadió una variante oscura del verde por contraste. Creó `Dimens.kt` con un `CompositionLocal`, `LoanItem` con `FlowRow` y aplicó `modifier` a la raíz. `literals` sin `--tokens` dio 49 hallazgos solo en el tema, y con `--tokens` ninguno. Conservó `home.search`. Preguntó si el contenedor de un botón tonal necesita 3:1.
+- **Casos aplazados.** Siguió las aclaraciones del PR #4: retiró la demo de Vite, llevó el acento compartido a un token nuevo o a una corrección global según el contraste medido, dio prioridad a la plataforma, revisó a mano el reenvío de `<Input>` y, sin Python, declaró pendientes las comprobaciones.
+- **Activación por descripción.** Las dos sesiones cargaron `peqa-workflows:ui-design` desde el checkout sin que la petición lo nombrara, con `design` y `design-sync` también instalados. La web capturó a 375, 901 y 1440 px y ejecutó el helper; la nativa comprobó tipos, ejecutó el helper y dejó pendientes las capturas.
+
+Fallos de redacción detectados en esa tanda:
+
+- `native.md` no traducía la regla web de enlace frente a botón, ni decía que las convenciones de la plataforma mandan.
+- Faltaban la carga de fuentes y las cifras tabulares en nativo, y qué parte del conjunto mínimo ya trae la plataforma.
+- El paso 5 terminaba cuando las comprobaciones «pasan», aunque la referencia admite hallazgos justificados o pendientes.
+- `git merge-base origin/main HEAD` falla sin remoto, y la ruta sin Git no decía cuándo copiar los originales ni excluía dependencias.
+- El ancho previo al colapso no preveía pantallas sin navegación, y los anchos del mínimo de calidad parecían exigir capturas.
+- `contrast --kind ui` no decía si el fondo de un botón con etiqueta necesita 3:1.
+
+Segunda tanda: un agente nuevo repitió solo los casos corregidos (botón de SwiftUI que navega, botón tonal de Compose, sitio sin Git, repositorio sin remoto con `raw_control` y landing sin menú). Usó `NavigationLink` con `ButtonStyle`, no exigió 3:1 al contenedor tonal, copió la carpeta antes de editar, tomó `HEAD` como base y omitió el ancho de colapso. Señaló que copiar solo los archivos tocados hace que `diff -ruN` marque el resto como nuevo y que faltaba el equivalente de `ViewThatFits` en Compose. Ambos se corrigieron sin otra simulación.
+
+Validación estática: `python3 -m unittest discover -s tests -v`, enlaces relativos y anclas comprobados con un script, y `git diff --check` limpio. Los comandos de `adb` de `native.md` no se ejecutaron en un dispositivo.
+
 ## Pendiente
 
-- Ninguna muestra renderizó la interfaz ni tomó capturas.
-- Cada caso tuvo una sola muestra.
-- No se probó que un hijo de `dirige` cargue `ui-design` por su descripción sin que el brief lo nombre, ni la convivencia con otros skills de diseño instalados.
+- Ninguna muestra nativa compiló ni capturó en un simulador o emulador.
+- Cada caso tuvo una sola muestra, y la activación por descripción dos.
+- Las ambigüedades menores de la última tanda siguen abiertas: el modo de una app nativa sin tema, el contraste con color dinámico conservado y los anchos de teléfono distintos entre referencias.
 - `dirige` sigue sin un criterio explícito para tareas demasiado pequeñas para delegar, para cuándo corresponde `revisa` o para quién posee el sistema cuando termina el hijo que lo tenía.

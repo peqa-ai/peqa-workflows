@@ -9,6 +9,7 @@ Resuelve las ubicaciones desde el repositorio. Lugares habituales:
 - Tokens: bloques `:root` con custom properties de CSS, el tema de Tailwind (`tailwind.config.*`, o `@theme` en CSS con Tailwind v4), objetos de tema (`createTheme`, `extendTheme`), JSON de tokens o fuentes de Style Dictionary y archivos de variables SCSS.
 - Componentes: `components/ui/`, `src/components/`, un paquete del workspace como `packages/ui`, el `components.json` de shadcn y las bibliotecas de UI de `package.json` (MUI, Chakra, Mantine, Radix, React Aria, Headless UI, Vuetify, PrimeVue, Angular Material).
 - Documentación: Storybook (`.storybook/`, `*.stories.*`), un `DESIGN.md` o notas de diseño y tokens exportados de Figma.
+- En una app nativa, los lugares de [pantallas nativas](native.md#tokens-y-tema).
 
 Búsquedas iniciales, ajustadas al repositorio:
 
@@ -74,38 +75,29 @@ Usa el mecanismo que ya tiene el stack: custom properties mapeadas al tema de Ta
 
 Un rediseño cambia lo que se ve y conserva lo que otros usan sin verlo: los `id` y las anclas, el `name` y el orden de los campos, `autocomplete`, los `data-*` de pruebas y analítica, las rutas, los metadatos (título, Open Graph, datos estructurados), los textos legales y de consentimiento, y las etiquetas de navegación. Cambiar uno de ellos necesita que lo pidan el brief o el usuario.
 
-Para comprobarlo, compara los atributos de las líneas retiradas con los de las añadidas. Cada línea que empieza por `<` es un atributo que desapareció:
+El subcomando `contracts` del [helper](#comprobaciones) lista los atributos retirados que no vuelven a aparecer en ninguna línea añadida. Revisa a mano lo que un diff de atributos no muestra: los atributos que llegan por spread o por una expresión compuesta, que un componente que envuelve el control los reenvía al elemento del DOM, y los contratos que no son atributos, como metadatos y textos legales.
 
 ```sh
-ATTR='\b(id|name|for|htmlFor|autocomplete|autoComplete|href|data-[a-z-]+)="[^"]*"'
-diff <(git diff -U0 "$BASE" -- <archivos> | rg '^-[^-]' | rg -o "$ATTR" | sort -u) \
-     <(git diff -U0 "$BASE" -- <archivos> | rg '^\+[^+]' | rg -o "$ATTR" | sort -u) | rg '^<'
+python3 "$UI_CHECKS" contracts --repo "$REPO" --base "$BASE" -- src/pages/signup
 ```
-
-En JSX, revisa además los atributos con valor entre llaves, que este patrón no captura. Si un componente envuelve el control, comprueba también que reenvía esos atributos al elemento del DOM.
 
 ## Comprobaciones
 
-Ejecútalas sobre lo que cambió la tarea respecto a su base: los archivos nuevos completos y, en los que ya existían, solo las líneas añadidas, para que el código heredado no tape la señal. En un checkout compartido con otros agentes, limita la lista a tus archivos.
+Las comprobaciones miran lo que cambió la tarea respecto a su base, el commit del que parte: `git merge-base origin/main HEAD` en una rama, o `HEAD` si la tarea empezó sobre el último commit sin hacer otros. Revisan los archivos nuevos completos y, en los que ya existían, solo las líneas añadidas, para que el código heredado no tape la señal. En un checkout compartido con otros agentes, limita el alcance a tus archivos con pathspecs después de `--`.
 
-Los literales de color, tamaño de texto, espacio y radio solo van en la definición de tokens: su archivo, o el bloque `:root` o `@layer tokens` cuando todo vive en una hoja. Los elementos de formulario sin envolver solo van dentro del componente que los envuelve; en HTML sin componentes, cada control lleva la clase de su bloque. Cualquier otro resultado se corrige o lleva una justificación de una línea en el informe.
+Los literales de color, tamaño de texto, espacio y radio solo van en la definición de tokens: sus archivos, o los bloques `:root`, `@theme` o `@layer tokens` cuando todo vive en una hoja. Los controles de formulario sin envolver solo van dentro del componente que los envuelve; en HTML sin componentes, cada control lleva la clase de su bloque, y basta comprobar esa clase en cada `raw_control` que liste el helper. Cualquier otro resultado se corrige o lleva una justificación de una línea en el informe.
 
-- Literales de color: `#[0-9a-fA-F]{3,8}\b|(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\(`
-- Literales de tamaño, espacio y radio en CSS: `(margin|padding|gap|font-size|border-radius)[a-z-]*\s*:[^;]*\b[0-9.]+(px|rem|em)\b`
-- Valores arbitrarios de Tailwind: `\[(#|-?[0-9.]+(px|rem|em))`
-- Estilos inline y overrides: `style=\{\{|style="|!important`
-- Elementos sin envolver que ya tienen componente: `<(button|input|select|textarea)\b`
-
-Pasa cada archivo como argumento separado. Por ejemplo, para los literales de color:
+El helper `scripts/ui_checks.py` de este skill aplica esas reglas y es la única fuente de sus patrones. `UI_CHECKS` es su ruta absoluta en esta instalación:
 
 ```sh
-COLOR='#[0-9a-fA-F]{3,8}\b|(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\('
-# Líneas añadidas en archivos versionados
-git diff -U0 "$BASE" -- <archivos> | rg '^\+[^+]' | rg "$COLOR"
-# Archivos nuevos sin versionar, completos; -r evita buscar en todo el directorio si la lista queda vacía
-git ls-files -z --others --exclude-standard -- <archivos> | xargs -0 -r rg -n "$COLOR"
+python3 "$UI_CHECKS" literals --repo "$REPO" --base "$BASE" \
+  --tokens src/styles/tokens.css --wrappers src/components/ui -- src/pages/pricing src/components/ui
 ```
 
-Sin Git, compara con una copia de los originales mediante `diff -U0`.
+- `literals` informa por categoría: `color`; `length` para tamaños, espacios y radios; `arbitrary_value` para valores arbitrarios de Tailwind; `inline_style` para estilos inline y `!important`, y `raw_control` para controles sin envolver. Cubre también Swift y Kotlin.
+- `--tokens` señala los archivos o directorios de tokens, y `--wrappers`, los componentes que envuelven controles. Ambos se repiten por ruta.
+- Sin Git, copia la carpeta del proyecto fuera de ella antes de editar, sin dependencias ni salidas de build. Al terminar, genera el diff con su contexto por defecto, que `contracts` necesita para los contratos repartidos en varias líneas, y excluye esas mismas carpetas, por ejemplo `diff -ruN -x node_modules -x dist original nuevo > cambios.diff`. Después pasa `--diff cambios.diff --root nuevo` a `literals` o `--diff cambios.diff` a `contracts`.
+
+El helper devuelve un objeto JSON y sale con 0 sin hallazgos, con 1 si los hay y con 2 ante un error de uso o de entrada, que nombra en `error`. `scanned` lista los archivos revisados y `skipped` los omitidos con su motivo; confirma que tus archivos están en `scanned`. Si sale con 2, falla o no hay Python 3, el informe declara pendiente esa comprobación. Un resultado limpio no cubre todos los literales posibles, como un alto fijo en Swift, así que la regla sigue aplicando al leer tu diff.
 
 Compara además cada componente nuevo con el inventario del paso 2: dos componentes para la misma función son un defecto, salvo las implementaciones heredadas que el modo consolidar dejó como seguimiento.
