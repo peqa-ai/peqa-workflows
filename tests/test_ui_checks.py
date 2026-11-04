@@ -605,6 +605,28 @@ class FilterTests(Fixture):
                 self.assertTrue(self.plain_git_runs_filter(env))
                 self.assert_helper_runs_no_filter(env)
 
+    def test_empty_driver_name_clean_never_runs(self):
+        # Git accepts `filter..clean` and applies it to `* filter=`.
+        self.write('.gitattributes', '* filter=\n')
+        self.git('config', 'filter..clean', self.probe())
+        self.assertTrue(self.plain_git_runs_filter())
+        self.assert_helper_runs_no_filter()
+
+    def test_empty_driver_name_process_never_runs(self):
+        self.write('.gitattributes', '* filter=\n')
+        self.git('config', 'filter..process', 'sh -c "' + self.probe('exit 1').replace('"', '\\"') + '"')
+        self.assertTrue(self.plain_git_runs_filter())
+        self.assert_helper_runs_no_filter()
+
+    def test_fsmonitor_hook_never_runs(self):
+        # Before Git 2.36 any non-empty core.fsmonitor, `false` included, is a hook path.
+        hook = self.write('fsmonitor-hook', '#!/bin/sh\n' + self.probe('exit 1') + '\n', base=self.root)
+        hook.chmod(0o755)
+        self.git('config', 'core.fsmonitor', str(hook))
+        if not self.plain_git_runs_filter():
+            self.skipTest('this Git does not query the fsmonitor hook in a diff')
+        self.assert_helper_runs_no_filter()
+
     def test_driver_name_that_cannot_be_overridden_is_refused(self):
         self.write('.gitattributes', '* filter=a=b\n')
         self.git('config', 'filter.a=b.clean', self.probe())
@@ -627,6 +649,126 @@ class FilterTests(Fixture):
         env = {**GIT_ENV, 'PATH': str(fake.parent)}
         self.assertEqual(self.cli('literals', '--repo', str(self.repo), '--base', 'HEAD', env=env),
                          (2, {'error': 'GIT_UNSUPPORTED'}))
+
+
+class TransportTests(Fixture):
+    """A lazy fetch from a promisor remote must not reach any transport."""
+
+    def setUp(self):
+        super().setUp()
+        self.marker = self.root / 'remote-ran'
+        self.commit({'a.css': '.x {}\n', 'Form.html': '<input id="email">\n'})
+        blob = self.git('rev-parse', 'HEAD:a.css').strip()
+        self.write('a.css', '.x { color: #fff; }\n')
+        probe = self.write('remote.sh', "#!/bin/sh\nprintf ran >> '" + str(self.marker) + "'\nexit 1\n",
+                           base=self.root)
+        probe.chmod(0o755)
+        self.git('config', 'remote.origin.url', 'ext::' + str(probe))
+        self.git('config', 'remote.origin.promisor', 'true')
+        # A local per-protocol setting outranks protocol.allow=never.
+        self.git('config', 'protocol.ext.allow', 'always')
+        (self.repo / '.git/objects' / blob[:2] / blob[2:]).unlink()
+
+    def plain_git_runs_remote(self, extra):
+        subprocess.run(['git', '-C', str(self.repo), '-c', 'protocol.allow=never', 'diff', 'HEAD'],
+                       capture_output=True, env={**GIT_ENV, **extra}, timeout=20)
+        ran = self.marker.exists()
+        if ran:
+            self.marker.unlink()
+        return ran
+
+    def test_helper_never_runs_the_remote(self):
+        self.assertTrue(self.plain_git_runs_remote({}))
+        for command in ('literals', 'contracts'):
+            rc, data = self.cli(command, '--repo', str(self.repo), '--base', 'HEAD')
+            self.assertEqual((rc, data), (2, {'error': 'GIT_COMMAND_FAILED'}))
+        self.assertFalse(self.marker.exists())
+
+    def test_transport_ban_holds_without_lazy_fetch_guard(self):
+        # Git before 2.44 ignores GIT_NO_LAZY_FETCH; GIT_ALLOW_PROTOCOL must still stop the fetch.
+        helper = load_helper()
+        original = helper._git_environment
+
+        def without(*names):
+            def environment():
+                env = original()
+                for name in names:
+                    env.pop(name)
+                return env
+            return environment
+
+        with patch.object(helper, '_git_environment', without('GIT_NO_LAZY_FETCH')):
+            for run in (helper.literals_git, helper.contracts_git):
+                with self.assertRaises(helper.CheckError):
+                    run(self.repo, 'HEAD')
+        self.assertFalse(self.marker.exists())
+        # Control: without both guards the same call does run the remote command.
+        with patch.object(helper, '_git_environment', without('GIT_NO_LAZY_FETCH', 'GIT_ALLOW_PROTOCOL')):
+            with self.assertRaises(helper.CheckError):
+                helper.literals_git(self.repo, 'HEAD')
+        self.assertTrue(self.marker.exists())
+
+
+class ValueOnlyContractTests(Fixture):
+    """The attribute or call name stays as context; only its value line changes."""
+
+    BEFORE = {
+        'A.html': '<input\n  id=\n  "email"\n>\n',
+        'B.tsx': '<Input\n  id={\n    "email"\n  }\n/>\n',
+        'C.swift': 'Text("x")\n    .accessibilityIdentifier(\n        "login"\n    )\n',
+        'D.kt': 'Button(\n    modifier = Modifier.testTag(\n        "submit"\n    )\n) {}\n',
+    }
+    VALUE = {'A.html': '"mail"', 'B.tsx': '"mail"', 'C.swift': '"signin"', 'D.kt': '"send"'}
+    ARGUMENT = {'A.html': '"{{ field.id }}"', 'B.tsx': 'fieldId', 'C.swift': 'Ids.login', 'D.kt': 'Tags.SUBMIT'}
+    OLD = {'A.html': '"email"', 'B.tsx': '"email"', 'C.swift': '"login"', 'D.kt': '"submit"'}
+
+    def trees(self, write):
+        for variant, values in (('value', self.VALUE), ('argument', self.ARGUMENT)):
+            for name, text in self.BEFORE.items():
+                write('before', variant + '/' + name, text)
+                write('after', variant + '/' + name, text.replace(self.OLD[name], values[name]))
+        # A duplicate kept on an unchanged line means the contract is not missing.
+        write('before', 'value/Keep.html', '<a id="top">\n<p>one</p>\n<a id="top">\n')
+        write('after', 'value/Keep.html', '<a id="top">\n<p>one</p>\n')
+
+    def expected(self, *variants):
+        def where(*names):
+            return [{'path': variant + '/' + name, 'line': 2} for variant in variants for name in names]
+        return [{'attribute': '.accessibilityIdentifier("login")', 'removed_in': where('C.swift')},
+                {'attribute': 'id="email"', 'removed_in': where('A.html', 'B.tsx')},
+                {'attribute': 'testTag("submit")', 'removed_in': where('D.kt')}]
+
+    def test_git_mode(self):
+        before, after = {}, {}
+        self.trees(lambda side, path, text: (before if side == 'before' else after).__setitem__(path, text))
+        self.commit(before)
+        for path, text in after.items():
+            self.write(path, text)
+        for variant in ('value', 'argument'):
+            with self.subTest(variant=variant):
+                rc, data = self.cli('contracts', '--repo', str(self.repo), '--base', 'HEAD', '--', variant)
+                self.assertEqual((rc, data['missing']), (1, self.expected(variant)))
+
+    def test_diff_mode_with_context(self):
+        if shutil.which('diff') is None:
+            self.skipTest('diff is not installed')
+        self.trees(lambda side, path, text: self.write(path, text, base=self.root / side))
+        result = subprocess.run(['diff', '-ruN', 'before', 'after'], cwd=self.root, capture_output=True)
+        diff = self.write('context.diff', result.stdout, base=self.root)
+        rc, data = self.cli('contracts', '--diff', str(diff))
+        self.assertEqual((rc, data['missing']), (1, self.expected('argument', 'value')))
+
+    def test_literals_ignore_context_lines(self):
+        if shutil.which('diff') is None:
+            self.skipTest('diff is not installed')
+        self.write('s.css', '.a { color: #111111; }\n.b { color: #222222; }\n', base=self.root / 'before')
+        new = self.write('s.css', '.a { color: #111111; }\n.n { gap: 3px; }\n.b { color: #222222; }\n',
+                         base=self.root / 'after')
+        result = subprocess.run(['diff', '-ruN', 'before', 'after'], cwd=self.root, capture_output=True)
+        diff = self.write('literal.diff', result.stdout, base=self.root)
+        self.assertIn(b' .a { color: #111111; }', result.stdout)
+        rc, data = self.cli('literals', '--diff', str(diff), '--root', str(new.parent))
+        self.assertEqual((rc, self.found(data)), (1, {('s.css', 2, 'length')}))
 
 
 class MultilineContractTests(Fixture):

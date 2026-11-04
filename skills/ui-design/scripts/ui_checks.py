@@ -30,18 +30,29 @@ repository root (Git mode) or to --root (diff mode). Diff mode reads a unified
 diff such as `diff -ruN -U0 orig new`; files without content in the diff
 (`Only in` lines from a diff without -N) are listed as skipped.
 
-Contracts are matched on runs of consecutive removed or added lines, so a
-call or tag split across lines counts once, at its first line; whitespace
+Contracts compare an old side with a new side. In Git mode both sides are
+whole files: the BASE blob of each changed path (read with `git cat-file`,
+without conversion) against its working-tree file and every untracked file,
+so a change to the value alone is seen and a contract kept on an unchanged
+line is not missing. In diff mode the sides are the hunks with their context
+lines; generate the diff with context (`diff -ruN`), since with -U0 a change
+to a value split from its attribute or call name cannot be seen. A call or tag
+split across consecutive lines counts once, at its first line; whitespace
 around `=` is accepted, and assignments such as `const id = "x"` are not
-attributes.
+attributes. `literals` scans added lines only, never context.
 
 Guarantees. No Git writes or optional locks, hooks, external diff, textconv,
-pager, network or shell; nothing from the scanned files is executed. Requires
-Git 2.32 or later (GIT_UNSUPPORTED otherwise). Global and system Git
-configuration, the caller's GIT_* variables (GIT_CONFIG_PARAMETERS,
-GIT_CONFIG_COUNT...) and global or system attributes are ignored. No Git
-filter runs: every filter driver defined in the configuration Git reads
-(repository, worktree and included files) is overridden with empty clean,
+pager, fsmonitor, network or shell; nothing from the scanned files is
+executed. Requires Git 2.32 or later (GIT_UNSUPPORTED otherwise). Global and
+system Git configuration, the caller's GIT_* variables (GIT_CONFIG_PARAMETERS,
+GIT_CONFIG_COUNT...) and global or system attributes are ignored.
+GIT_ALLOW_PROTOCOL is set empty, which outranks any protocol.<name>.allow in
+the repository, so a lazy fetch from a promisor remote cannot use any
+transport (GIT_NO_LAZY_FETCH is also set, honored from Git 2.44); a missing
+object is then GIT_COMMAND_FAILED. core.fsmonitor is set empty, which disables
+it on every supported release. No Git filter runs: every filter driver defined
+in the configuration Git reads (repository, worktree and included files),
+including the driver with an empty name, is overridden with empty clean,
 smudge and process commands and required=false on every Git call, whichever
 attributes file selects it (.gitattributes, info/attributes). The driver list
 is read again after the last Git call; a change is FILTER_CONFIG_CHANGED and a
@@ -190,7 +201,7 @@ _STATEMENT_BEFORE = re.compile(r'(?:\b(?:const|let|var|val|export|return)\s+|[(,
 _STATEMENT_AFTER = re.compile(r'[ \t]*;')
 _SWIFT_IDENTIFIER = re.compile(r'\.accessibilityIdentifier\(\s*"((?:[^"\\\n]|\\.){0,1024})"\s*\)')
 _COMPOSE_TAG = re.compile(r'\btestTag\(\s*"((?:[^"\\\n]|\\.){0,1024})"\s*\)')
-_FILTER_KEY = re.compile(rb'filter\.([\s\S]+)\.(?:clean|smudge|process|required)\Z')
+_FILTER_KEY = re.compile(rb'filter\.([\s\S]*)\.(?:clean|smudge|process|required)\Z')
 _GIT_VERSION = re.compile(rb'git version ([0-9]+)\.([0-9]+)')
 _STRING_EXPRESSION = re.compile(r'''"([^"]*)"|'([^']*)'|`([^`$]*)`''')
 _CANONICAL = {'htmlFor': 'for', 'autoComplete': 'autocomplete'}
@@ -235,48 +246,82 @@ class _Budget:
 class _Change:
     """One file pair from a unified diff; paths are str, None for /dev/null."""
     __slots__ = ('old', 'new', 'old_mode', 'new_mode', 'binary', 'only_in', 'unsafe', 'git_format',
-                 'added', 'removed')
+                 'added', 'removed', 'old_lines', 'new_lines')
 
     def __init__(self, old=None, new=None):
         self.old, self.new = old, new
         self.old_mode = self.new_mode = None
         self.binary = self.only_in = self.unsafe = self.git_format = False
         self.added, self.removed = [], []
+        # Each side of every hunk, context included: (line number, text).
+        self.old_lines, self.new_lines = [], []
 
 
 # Git -----------------------------------------------------------------------
 
-def _git(cwd, args, budget, optional=False, allow=()):
-    """No shell, bounded output and time; global config, helpers and filters disabled.
+def _git_environment():
+    """Caller GIT_* variables dropped; config, attributes and transports locked down.
 
-    Exit codes in `allow` return the output; any other failure returns None when
-    optional, else raises.
+    GIT_ALLOW_PROTOCOL="" allows no transport and is checked before any
+    protocol.<name>.allow setting (transport.c since Git 2.6), so a lazy fetch
+    from a promisor remote cannot reach the network or run an ext:: command,
+    also on Git releases that ignore GIT_NO_LAZY_FETCH (before 2.44).
     """
-    budget.check()
     env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
     env.update(GIT_TERMINAL_PROMPT='0', GIT_OPTIONAL_LOCKS='0', GIT_CONFIG_NOSYSTEM='1',
                GIT_CONFIG_GLOBAL=os.devnull, GIT_ATTR_NOSYSTEM='1', GIT_NO_REPLACE_OBJECTS='1',
-               GIT_NO_LAZY_FETCH='1', LC_ALL='C')
+               GIT_NO_LAZY_FETCH='1', GIT_ALLOW_PROTOCOL='', LC_ALL='C')
+    return env
+
+
+def _git(cwd, args, budget, optional=False, allow=(), stdin=None):
+    """No shell, bounded output and time; global config, helpers and filters disabled.
+
+    Exit codes in `allow` return the output; any other failure returns None when
+    optional, else raises. `stdin` bytes are written while output is read.
+    """
+    budget.check()
+    # An empty core.fsmonitor disables it on every supported release; before
+    # 2.36 any other value, `false` included, names a hook to run.
     command = ['git', '--no-pager', '--no-optional-locks', '--literal-pathspecs',
-               '-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=' + os.devnull,
+               '-c', 'core.fsmonitor=', '-c', 'core.hooksPath=' + os.devnull,
                '-c', 'core.attributesFile=' + os.devnull,
                '-c', 'core.quotePath=false', '-c', 'protocol.allow=never',
                *budget.git_config, '-C', cwd, *args]
     try:
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                stdin=subprocess.DEVNULL, env=env)
+                                stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
+                                env=_git_environment())
     except OSError as exc:
         raise CheckError('GIT_UNAVAILABLE') from exc
     output = bytearray()
+    pending = memoryview(stdin or b'')
     deadline = min(budget.deadline, time.monotonic() + GIT_SECONDS)
     try:
         with selectors.DefaultSelector() as selector:
             selector.register(proc.stdout, selectors.EVENT_READ)
+            if stdin is not None:
+                os.set_blocking(proc.stdin.fileno(), False)
+                if pending:
+                    selector.register(proc.stdin, selectors.EVENT_WRITE)
+                else:
+                    proc.stdin.close()
             while selector.get_map():
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise CheckError('TIMEOUT')
                 for key, _ in selector.select(min(remaining, 0.2)):
+                    if key.fileobj is proc.stdin:
+                        try:
+                            pending = pending[os.write(proc.stdin.fileno(), pending[:65536]):]
+                        except (BlockingIOError, InterruptedError):
+                            continue
+                        except BrokenPipeError:
+                            pending = pending[:0]
+                        if not pending:
+                            selector.unregister(proc.stdin)
+                            proc.stdin.close()
+                        continue
                     block = os.read(key.fileobj.fileno(), 65536)
                     if not block:
                         selector.unregister(key.fileobj)
@@ -298,6 +343,11 @@ def _git(cwd, args, budget, optional=False, allow=()):
             proc.kill()
         proc.wait()
         proc.stdout.close()
+        if proc.stdin is not None and not proc.stdin.closed:
+            try:
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
 
 
 def _toplevel(repo, budget):
@@ -403,18 +453,63 @@ def _git_scope(repo, base, pathspecs, budget):
                                     'GIT_OUTPUT_INVALID'), git=True)
     others = _git(top, ['ls-files', '-z', '--others', '--exclude-standard', '--', *specs], budget)
     untracked = sorted({os.fsdecode(item) for item in others.split(b'\0') if item})
-    # A driver defined while Git was running would not have been overridden.
+    _confirm_filters(top, drivers, budget)
+    budget.file(len(changes) + len(untracked))
+    return top, start, sha, drivers, changes, untracked
+
+
+def _confirm_filters(top, drivers, budget):
+    """A driver defined while Git was running would not have been overridden."""
     if _filter_drivers(top, budget) != drivers:
         raise CheckError('FILTER_CONFIG_CHANGED')
-    budget.file(len(changes) + len(untracked))
-    return top, start, changes, untracked
+
+
+def _base_blobs(top, sha, paths, budget):
+    """{path: (skip_reason, bytes)} for paths in BASE, read as stored objects.
+
+    `cat-file --batch` without --filters or --textconv applies no conversion.
+    Names travel on stdin, one per line, so a path may not contain a newline.
+    """
+    if not paths:
+        return {}
+    names = b''.join(sha.encode('ascii') + b':' + os.fsencode(path) + b'\n' for path in paths)
+    checks = _git(top, ['cat-file', '--batch-check'], budget, stdin=names).split(b'\n')
+    if len(checks) < len(paths):
+        raise CheckError('GIT_OUTPUT_INVALID')
+    result, wanted = {}, []
+    for path, line in zip(paths, checks):
+        fields = line.split(b' ')
+        if len(fields) != 3 or not SHA.fullmatch(fields[0].decode('ascii', 'replace')) or not fields[2].isdigit():
+            result[path] = ('missing', None)
+        elif fields[1] != b'blob':
+            result[path] = ('not_regular', None)
+        elif int(fields[2]) > MAX_FILE_BYTES:
+            result[path] = ('too_large', None)
+        else:
+            wanted.append((path, fields[0], int(fields[2])))
+    if not wanted:
+        return result
+    output = _git(top, ['cat-file', '--batch'], budget, stdin=b''.join(oid + b'\n' for _, oid, _ in wanted))
+    position = 0
+    for path, oid, size in wanted:
+        end = output.find(b'\n', position)
+        if end < 0 or output[position:end] != oid + b' blob ' + str(size).encode('ascii'):
+            raise CheckError('GIT_OUTPUT_INVALID')
+        data = output[end + 1:end + 1 + size]
+        position = end + 2 + size
+        if len(data) != size:
+            raise CheckError('GIT_OUTPUT_INVALID')
+        budget.read(size)
+        result[path] = ('binary', None) if b'\0' in data[:8000] else (None, data)
+    return result
 
 
 # Unified diff parsing ------------------------------------------------------
 
 class _Section:
     __slots__ = ('header', 'minus', 'plus', 'has_paths', 'hunks', 'rename_from', 'rename_to',
-                 'old_mode', 'new_mode', 'created', 'deleted', 'binary', 'only_in', 'added', 'removed')
+                 'old_mode', 'new_mode', 'created', 'deleted', 'binary', 'only_in', 'added', 'removed',
+                 'old_lines', 'new_lines')
 
     def __init__(self, header=None):
         self.header = header
@@ -422,6 +517,7 @@ class _Section:
         self.old_mode = self.new_mode = None
         self.has_paths = self.hunks = self.created = self.deleted = self.binary = self.only_in = False
         self.added, self.removed = [], []
+        self.old_lines, self.new_lines = [], []
 
 
 def _unquote(raw):
@@ -517,13 +613,17 @@ def _parse_patch(data, code):
                     tag = body[:1]
                     if tag == b'+':
                         current.added.append((new_line, body[1:]))
+                        current.new_lines.append((new_line, body[1:]))
                         new_line += 1
                         new_left -= 1
                     elif tag == b'-':
                         current.removed.append((old_line, body[1:]))
+                        current.old_lines.append((old_line, body[1:]))
                         old_line += 1
                         old_left -= 1
                     elif tag == b' ' or body in (b'', b'\r'):
+                        current.old_lines.append((old_line, body[1:]))
+                        current.new_lines.append((new_line, body[1:]))
                         old_line += 1
                         new_line += 1
                         old_left -= 1
@@ -612,6 +712,8 @@ def _changes(sections, git):
         change.git_format = section.header is not None
         change.added = [(number, _text(raw)) for number, raw in section.added]
         change.removed = [(number, _text(raw)) for number, raw in section.removed]
+        change.old_lines = [(number, _text(raw)) for number, raw in section.old_lines]
+        change.new_lines = [(number, _text(raw)) for number, raw in section.new_lines]
         changes.append(change)
     return changes
 
@@ -964,7 +1066,7 @@ def _listed_paths(values, resolve):
 def literals_git(repo, base, pathspecs=(), tokens=(), wrappers=()):
     """Literal findings in lines added since BASE and in untracked files."""
     budget = _Budget()
-    top, start, changes, untracked = _git_scope(repo, base, list(pathspecs), budget)
+    top, start, _, _, changes, untracked = _git_scope(repo, base, list(pathspecs), budget)
     resolve = lambda value: _contained(top, start, value, 'BAD_PATH')
     return _literals(changes, untracked, lambda path: _read_file(top, path, budget),
                      _listed_paths(list(tokens), resolve), _listed_paths(list(wrappers), resolve), budget)
@@ -1058,22 +1160,37 @@ def _runs(lines):
         yield run
 
 
-def _contracts(changes, untracked, read, budget):
-    removed, added = {}, set()
-    scanned, skipped = set(), {}
-    entries = [0]
+class _Contracts:
+    """Contract keys on the old side and on the new side, with limits."""
 
-    def collect(path, lines, side):
+    def __init__(self, budget):
+        self.budget = budget
+        self.removed, self.added = {}, set()
+        self.scanned, self.skipped = set(), {}
+        self.locations = 0
+
+    def skip(self, path, reason):
+        self.skipped.setdefault(path, reason)
+
+    def side(self, path, mode):
+        """Skip reason for one side of a change, or None if it can be read."""
+        if mode == '120000':
+            return 'symlink'
+        if mode == '160000':
+            return 'submodule'
+        return None if _kind(path) in CONTRACT_KINDS else 'unsupported_type'
+
+    def collect(self, path, lines, side):
         kind = _kind(path)
         if kind not in CONTRACT_KINDS:
-            skipped.setdefault(path, 'unsupported_type')
+            self.skip(path, 'unsupported_type')
             return
         if any(len(text) > MAX_LINE_CHARS for _, text in lines):
-            skipped.setdefault(path, 'long_lines')
+            self.skip(path, 'long_lines')
             return
-        scanned.add(path)
+        self.scanned.add(path)
         for run in _runs(lines):
-            budget.check()
+            self.budget.check()
             # Comment lines keep their place so offsets still map to line numbers.
             texts = ['' if _comment_line(text) else text for _, text in run]
             starts, offset = [], 0
@@ -1082,81 +1199,116 @@ def _contracts(changes, untracked, read, budget):
                 offset += len(text) + 1
             for key, display, start in _attributes('\n'.join(texts), kind):
                 number = run[bisect.bisect_right(starts, start) - 1][0]
-                if side == 'added':
-                    added.add(key)
-                    if len(added) > MAX_CONTRACT_ENTRIES:
+                if side == 'new':
+                    self.added.add(key)
+                    if len(self.added) > MAX_CONTRACT_ENTRIES:
                         raise CheckError('LIMIT_EXCEEDED')
-                else:
-                    entry = removed.setdefault(key, {'display': display, 'where': set()})
-                    if (path, number) not in entry['where']:
-                        entry['where'].add((path, number))
-                        entries[0] += 1
-                        if entries[0] > MAX_CONTRACT_ENTRIES:
-                            raise CheckError('LIMIT_EXCEEDED')
+                    continue
+                entry = self.removed.setdefault(key, {'display': display, 'where': set()})
+                if (path, number) not in entry['where']:
+                    entry['where'].add((path, number))
+                    self.locations += 1
+                    if self.locations > MAX_CONTRACT_ENTRIES:
+                        raise CheckError('LIMIT_EXCEEDED')
 
+    def collect_file(self, path, reason, data, side):
+        if reason:
+            self.skip(path, reason)
+        else:
+            self.collect(path, list(enumerate(_Document(data).lines, 1)), side)
+
+    def result(self):
+        missing = []
+        for key, entry in self.removed.items():
+            if key not in self.added:
+                if len(missing) == MAX_FINDINGS:
+                    raise CheckError('LIMIT_EXCEEDED')
+                where = [{'path': path, 'line': number} for path, number in sorted(entry['where'])]
+                missing.append({'attribute': entry['display'], 'removed_in': where})
+        missing.sort(key=lambda item: (item['attribute'], item['removed_in'][0]['path'],
+                                       item['removed_in'][0]['line']))
+        return {'missing': missing, 'scanned': sorted(self.scanned),
+                'skipped': [{'path': path, 'reason': reason} for path, reason in sorted(self.skipped.items())]}
+
+
+def contracts_git(repo, base, pathspecs=()):
+    """Contracts of changed files at BASE that no changed or untracked file still has.
+
+    Both sides are whole files: the BASE blob of every changed path and its
+    working-tree file, plus untracked files. A contract kept on an unchanged
+    line, or whose name stays while only its value changes, is compared too.
+    """
+    budget = _Budget()
+    top, _, sha, drivers, changes, untracked = _git_scope(repo, base, list(pathspecs), budget)
+    found = _Contracts(budget)
+    old_paths = []
     for change in changes:
         budget.check()
+        path = change.new or change.old
+        if change.binary:
+            found.skip(path, 'binary' if _kind(path) in CONTRACT_KINDS else 'unsupported_type')
+            continue
+        if change.old is not None:
+            reason = found.side(change.old, change.old_mode)
+            if reason is None and '\n' in change.old:
+                reason = 'unsupported_path'
+            if reason:
+                found.skip(change.old, reason)
+            else:
+                old_paths.append(change.old)
+        if change.new is not None:
+            reason = found.side(change.new, change.new_mode)
+            if reason:
+                found.skip(change.new, reason)
+            else:
+                found.collect_file(change.new, *_read_file(top, change.new, budget), 'new')
+    for path in untracked:
+        budget.check()
+        if path.endswith('/'):
+            found.skip(path, 'nested_repository')
+        elif _kind(path) not in CONTRACT_KINDS:
+            found.skip(path, 'unsupported_type')
+        else:
+            found.collect_file(path, *_read_file(top, path, budget), 'new')
+    for path, (reason, data) in sorted(_base_blobs(top, sha, sorted(set(old_paths)), budget).items()):
+        found.collect_file(path, reason, data, 'old')
+    _confirm_filters(top, drivers, budget)
+    return found.result()
+
+
+def contracts_diff(diff_file):
+    """Contracts on the old side of each hunk, context included, absent from every new side.
+
+    A value-only change is only visible when the diff carries the context
+    lines around it (`diff -ruN`); with -U0 only the changed lines are known.
+    """
+    budget = _Budget()
+    changes = _read_diff(diff_file)
+    budget.file(len(changes))
+    found = _Contracts(budget)
+    for change in changes:
+        budget.check()
+        if not change.git_format:
+            change.old, change.new = _strip_one(change.old), _strip_one(change.new)
         path = change.new or change.old
         if path is None:
             continue
         if change.only_in:
-            skipped.setdefault(path, 'only_in_one_tree')
+            found.skip(path, 'only_in_one_tree')
             continue
         if change.binary:
-            skipped.setdefault(path, 'binary' if _kind(path) in CONTRACT_KINDS else 'unsupported_type')
+            found.skip(path, 'binary' if _kind(path) in CONTRACT_KINDS else 'unsupported_type')
             continue
-        if change.removed and change.old is not None:
-            if change.old_mode in ('120000', '160000'):
-                skipped.setdefault(change.old, 'symlink' if change.old_mode == '120000' else 'submodule')
+        for name, mode, lines, side in ((change.old, change.old_mode, change.old_lines, 'old'),
+                                        (change.new, change.new_mode, change.new_lines, 'new')):
+            if name is None or not lines:
+                continue
+            reason = found.side(name, mode)
+            if reason:
+                found.skip(name, reason)
             else:
-                collect(change.old, change.removed, 'removed')
-        if change.added and change.new is not None:
-            if change.new_mode in ('120000', '160000'):
-                skipped.setdefault(change.new, 'symlink' if change.new_mode == '120000' else 'submodule')
-            else:
-                collect(change.new, change.added, 'added')
-    for path in untracked:
-        budget.check()
-        if path.endswith('/'):
-            skipped.setdefault(path, 'nested_repository')
-            continue
-        if _kind(path) not in CONTRACT_KINDS:
-            skipped.setdefault(path, 'unsupported_type')
-            continue
-        reason, data = read(path)
-        if reason:
-            skipped.setdefault(path, reason)
-            continue
-        document = _Document(data)
-        collect(path, list(enumerate(document.lines, 1)), 'added')
-    missing = []
-    for key, entry in removed.items():
-        if key not in added:
-            if len(missing) == MAX_FINDINGS:
-                raise CheckError('LIMIT_EXCEEDED')
-            where = [{'path': path, 'line': number} for path, number in sorted(entry['where'])]
-            missing.append({'attribute': entry['display'], 'removed_in': where})
-    missing.sort(key=lambda item: (item['attribute'], item['removed_in'][0]['path'], item['removed_in'][0]['line']))
-    return {'missing': missing, 'scanned': sorted(scanned),
-            'skipped': [{'path': path, 'reason': reason} for path, reason in sorted(skipped.items())]}
-
-
-def contracts_git(repo, base, pathspecs=()):
-    """Contract attributes removed since BASE that no added line restores."""
-    budget = _Budget()
-    top, _, changes, untracked = _git_scope(repo, base, list(pathspecs), budget)
-    return _contracts(changes, untracked, lambda path: _read_file(top, path, budget), budget)
-
-
-def contracts_diff(diff_file):
-    """Contract attributes removed in a unified diff that no added line restores."""
-    budget = _Budget()
-    changes = _read_diff(diff_file)
-    budget.file(len(changes))
-    for change in changes:
-        if not change.git_format:
-            change.old, change.new = _strip_one(change.old), _strip_one(change.new)
-    return _contracts(changes, [], None, budget)
+                found.collect(name, lines, side)
+    return found.result()
 
 
 # contrast ------------------------------------------------------------------
