@@ -1,6 +1,6 @@
 # Escenarios del PR de memoria
 
-Pruebas de comportamiento de `memoria-recuerda`, no tests de un recolector ejecutable. Ejecutar cada muestra con contexto fresco, leyendo `skills/memoria-recuerda/SKILL.md` y las referencias que alcance. Usar datos sintéticos y simulación explícita: sin worktrees, commits, push, `gh` ni `save`. Los prompts dicen solo «recuerda…» y piden describir todo lo que el agente haría, sin mencionar PRs.
+Pruebas de comportamiento de `memoria-guardar` (antes `memoria-recuerda`), no tests de un recolector ejecutable. Ejecutar cada muestra con contexto fresco, leyendo `skills/memoria-guardar/SKILL.md` y las referencias que alcance. Usar datos sintéticos y simulación explícita: sin worktrees, commits, push, `gh` ni `save`. Los prompts dicen solo «recuerda…» y piden describir todo lo que el agente haría, sin mencionar PRs.
 
 ## Casos
 

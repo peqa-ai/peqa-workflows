@@ -33,4 +33,4 @@ El filtro es inclusivo y usa fechas UTC. El resultado agrupa inicios, cierres y 
 
 El archivo admite hasta 50.000 eventos y 16 MiB; al alcanzar el límite informa el error sin borrar datos ni rotar en silencio. Un fallo de registro no interrumpe el trabajo principal: comunica que ese evento no se guardó. El registro no lee memorias ni añade comentarios en GitHub.
 
-Desde 0.9.0, registra nombres sin `peqa-`. El lector conserva los eventos históricos con ese prefijo y los agrupa bajo el nombre actual; las consultas no reescriben el archivo y los nuevos eventos usan el nombre canónico.
+Desde 0.9.0, registra nombres sin `peqa-`, y desde 0.16.0 `memoria-guardar` en lugar de `memoria-recuerda`. El lector conserva los eventos históricos con los nombres anteriores y los agrupa bajo el nombre actual; las consultas no reescriben el archivo y los nuevos eventos usan el nombre canónico. Un helper anterior no reconoce los nombres nuevos y rechaza el registro que los contenga; actualiza todas las instalaciones de Codex y Claude Code que usen el mismo repositorio.

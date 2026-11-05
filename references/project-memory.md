@@ -15,7 +15,7 @@ El helper elige `.peqa/memoria`. Si solo existe `.peqa-stack/memoria`, lo reutil
   local/<maquina>/<categoria>/<id>.md
 ```
 
-`project` contiene contexto compartible. `local` contiene contexto de esta máquina: por ejemplo, qué identidad local debería firmar commits o qué perfil CLI se usó. Un repositorio público también publicaría las notas `project` que su propietario decida confirmar: revisa su contenido con ese destino en mente. El helper mantiene `/local/` y `/.lock` al final del `.gitignore` del almacén y rechaza guardar sobre una nota local ya rastreada. No hace `git add`, commit, push ni cambios de configuración; `memoria-recuerda` comparte las notas `project` mediante [un PR propio](#compartir-notas-de-proyecto-por-pr).
+`project` contiene contexto compartible. `local` contiene contexto de esta máquina: por ejemplo, qué identidad local debería firmar commits o qué perfil CLI se usó. Un repositorio público también publicaría las notas `project` que su propietario decida confirmar: revisa su contenido con ese destino en mente. El helper mantiene `/local/` y `/.lock` al final del `.gitignore` del almacén y rechaza guardar sobre una nota local ya rastreada. No hace `git add`, commit, push ni cambios de configuración; `memoria-guardar` comparte las notas `project` mediante [un PR propio](#compartir-notas-de-proyecto-por-pr).
 
 `--all` incluye proyecto y máquina actual, nunca otras máquinas. El ID predeterminado es un hash aproximado de hostname y nodo de red; puede cambiar. `--machine` fija un slug elegido por el usuario cuando necesite estabilidad. No selecciones otra máquina solo para hacer aparecer resultados.
 
@@ -80,7 +80,7 @@ La detección de secretos es heurística: puede rechazar ejemplos con asignacion
 
 ## Compartir notas de proyecto por PR
 
-`memoria-recuerda` comparte las notas `project` en un PR propio contra la rama principal. Pedir que recuerde autoriza la rama, el commit, el push y el PR; el merge lo decide una persona. Las notas `machine` se guardan en el checkout actual y quedan fuera del PR. Ejecuta las órdenes de Git de los pasos 1 a 3 con `git -C "$PROJECT_ROOT"` y, desde que existe el worktree, las del PR con `git -C "$MEMORIA_TMP"`: el índice y la rama del checkout del usuario no cambian.
+`memoria-guardar` comparte las notas `project` en un PR propio contra la rama principal. Pedir que guarde o recuerde autoriza la rama, el commit, el push y el PR; el merge lo decide una persona. Las notas `machine` se guardan en el checkout actual y quedan fuera del PR. Ejecuta las órdenes de Git de los pasos 1 a 3 con `git -C "$PROJECT_ROOT"` y, desde que existe el worktree, las del PR con `git -C "$MEMORIA_TMP"`: el índice y la rama del checkout del usuario no cambian.
 
 1. Comprueba que el proyecto es un repositorio Git con `gh` autenticado. Obtén repositorio y rama principal con `gh repo view --json nameWithOwner,defaultBranchRef`. En `git -C "$PROJECT_ROOT" remote -v`, `$REMOTO` es el remoto cuya URL apunta a ese repositorio; úsalo en fetch, worktree y push. Ejecuta `git -C "$PROJECT_ROOT" fetch "$REMOTO"`.
 2. Revisa los PRs abiertos con `gh pr list --state open --json number,url,headRefName,baseRefName,isCrossRepository,files`. Retoma uno solo si cumple todo esto: rama `memoria/` de este repositorio, base en la rama principal, mismo concepto y todos sus archivos dentro del almacén de memoria. En otro caso abre un PR propio y enlaza el relacionado en la descripción.

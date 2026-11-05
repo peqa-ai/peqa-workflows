@@ -30,12 +30,15 @@ else:
     from git_paths import GitPathError, check_git_marker
 
 
-SKILLS = ("dirige", "idea", "revisa", "memoria-recuerda",
+SKILLS = ("dirige", "idea", "revisa", "memoria-guardar",
           "memoria-extraer", "ui-design")
 # Historical event names remain readable; new records use canonical names only.
-# Only the skills published before 0.9.0 carried the "peqa-" prefix.
+# Only the skills published before 0.9.0 carried the "peqa-" prefix, and 0.16.0
+# renamed memoria-recuerda to memoria-guardar.
 LEGACY_SKILLS = {"peqa-" + skill: skill for skill in
-                 ("dirige", "idea", "revisa", "memoria-recuerda", "memoria-extraer")}
+                 ("dirige", "idea", "revisa", "memoria-extraer")}
+LEGACY_SKILLS.update({"peqa-memoria-recuerda": "memoria-guardar",
+                      "memoria-recuerda": "memoria-guardar"})
 
 
 def canonical_skill(skill):
