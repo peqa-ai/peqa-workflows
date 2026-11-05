@@ -6,12 +6,12 @@ Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar 
 
 ## Cómo se reparte el trabajo
 
-`dirige` mantiene al agente padre a cargo de la entrega. Al empezar recupera la memoria del proyecto con `memoria-extraer`, si existe. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Cada commit va a una rama con PR, abierto en el mismo paso, como borrador si el trabajo sigue; ningún commit se queda solo en local.
+`dirige` mantiene al agente padre a cargo de la entrega. Al empezar recupera la memoria del proyecto con `memoria-extraer`, si existe. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: el merge lo decides tú.
 
 ```mermaid
 flowchart TD
     accTitle: Coordinación de una implementación con PEQA
-    accDescr: Al empezar, dirige recupera con memoria-extraer las notas del proyecto pertinentes para el encargo, si hay memoria. El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones, fijar con ui-design la dirección visual antes de repartir trabajo de interfaz y pedir a revisa una revisión independiente. Los resultados vuelven al padre, que conserva la responsabilidad de entregar.
+    accDescr: Al empezar, dirige recupera con memoria-extraer las notas del proyecto pertinentes para el encargo, si hay memoria. El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones, fijar con ui-design la dirección visual antes de repartir trabajo de interfaz y pedir a revisa una revisión independiente. Los resultados vuelven al padre, que conserva la responsabilidad de entregar. La entrega es un PR abierto, y el merge solo ocurre si el usuario lo decide.
 
     dirige["dirige<br/>Coordina el trabajo"]
     memoria["memoria-extraer<br/>Al empezar"]
@@ -20,7 +20,8 @@ flowchart TD
     agentes["Subagentes<br/>Implementan por partes"]
     padre["El padre<br/>Integra y verifica"]
     revisa["revisa<br/>Máx. 3 por PR"]
-    entrega["Entrega<br/>Cambios y evidencia"]
+    entrega["PR abierto<br/>Cambios y evidencia"]
+    merge["Merge<br/>Si tú lo decides"]
 
     dirige -. "Si hay memoria" .-> memoria
     memoria -. "Notas pertinentes" .-> dirige
@@ -29,6 +30,7 @@ flowchart TD
     dirige -. "Si hay interfaz" .-> ui
     ui -. "Plan e inventario" .-> agentes
     dirige --> agentes --> padre --> entrega
+    entrega -. "Tu decisión" .-> merge
     padre -. "Si corresponde" .-> revisa
     revisa -. "Hallazgos" .-> padre
 ```
