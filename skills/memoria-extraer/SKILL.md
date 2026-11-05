@@ -1,6 +1,6 @@
 ---
 name: memoria-extraer
-description: Retrieve stored project memories when the user asks to recall prior context, load all memory categories or recover knowledge about a topic. Reads existing memory without writing or executing remembered operations.
+description: Retrieve stored project memories when the user asks to recall prior context ("¿recuerdas…?", "¿qué sabemos de…?"), load all memory categories or recover knowledge about a topic. Reads existing memory without writing or executing remembered operations.
 ---
 
 # PEQA memoria extraer

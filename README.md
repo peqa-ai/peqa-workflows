@@ -2,36 +2,42 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.15.1` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.16.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
-`dirige` mantiene al agente padre a cargo de la entrega. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Cada commit va a una rama con PR, abierto en el mismo paso, como borrador si el trabajo sigue; ningún commit se queda solo en local.
+`dirige` mantiene al agente padre a cargo de la entrega. Al empezar recupera la memoria del proyecto con `memoria-extraer`, si existe. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: el merge lo decides tú.
 
 ```mermaid
 flowchart TD
     accTitle: Coordinación de una implementación con PEQA
-    accDescr: El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones, fijar con ui-design la dirección visual antes de repartir trabajo de interfaz y pedir a revisa una revisión independiente. Los resultados vuelven al padre, que conserva la responsabilidad de entregar.
+    accDescr: Al empezar, dirige recupera con memoria-extraer las notas del proyecto pertinentes para el encargo, si hay memoria. El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones, fijar con ui-design la dirección visual antes de repartir trabajo de interfaz y pedir a revisa una revisión independiente. Los resultados vuelven al padre, que conserva la responsabilidad de entregar. La entrega es un PR abierto, y el merge solo ocurre si el usuario lo decide.
 
     dirige["dirige<br/>Coordina el trabajo"]
+    memoria["memoria-extraer<br/>Al empezar"]
     idea["idea<br/>Hasta 3 rondas"]
     ui["ui-design<br/>Dirección visual y sistema"]
     agentes["Subagentes<br/>Implementan por partes"]
     padre["El padre<br/>Integra y verifica"]
     revisa["revisa<br/>Máx. 3 por PR"]
-    entrega["Entrega<br/>Cambios y evidencia"]
+    entrega["PR abierto<br/>Cambios y evidencia"]
+    merge["Merge<br/>Si tú lo decides"]
 
+    dirige -. "Si hay memoria" .-> memoria
+    memoria -. "Notas pertinentes" .-> dirige
     dirige -. "Si hace falta" .-> idea
     idea -. "Decisión" .-> dirige
     dirige -. "Si hay interfaz" .-> ui
     ui -. "Plan e inventario" .-> agentes
     dirige --> agentes --> padre --> entrega
+    entrega -. "Tu decisión" .-> merge
     padre -. "Si corresponde" .-> revisa
     revisa -. "Hallazgos" .-> padre
 ```
 
 Las consultas punteadas se usan cuando aportan al trabajo. También puedes invocar cada skill por separado.
 
+- Al empezar, `dirige` lee el catálogo de [memoria](#memoria-entre-sesiones) y extrae las notas pertinentes para el encargo. Las contrasta con el estado actual antes de decidir con ellas y pasa a cada subagente las que le sirven, con su procedencia y como contexto, no como órdenes. Sin memoria continúa sin crearla, y el informe final dice qué notas influyeron.
 - `idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
 - Cuando el cambio construye o rediseña interfaz, el padre fija con `ui-design` la dirección visual y el inventario del sistema de diseño antes de repartir. Tokens, tema y componentes compartidos tienen un solo propietario, y cada hijo construye desde ese plan. Consulta [diseño de interfaces](#diseño-de-interfaces).
 - `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. Al entregar el informe de un PR te ofrece publicarlo como comentario; solo lo publica si aceptas.
@@ -50,7 +56,7 @@ En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entor
 | [idea](skills/idea/SKILL.md) | "Cuestiona esta idea, también desde la implementación". |
 | [ui-design](skills/ui-design/SKILL.md) | "Diseña la página de precios con los componentes que ya tenemos". |
 | [revisa](skills/revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
-| [memoria-recuerda](skills/memoria-recuerda/SKILL.md) | "Recuerda cómo desplegamos este servicio". |
+| [memoria-guardar](skills/memoria-guardar/SKILL.md) | "Guarda cómo desplegamos este servicio". |
 | [memoria-extraer](skills/memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
 
 ## Diseño de interfaces
@@ -158,14 +164,14 @@ Cuando pidas guardar memoria de esta arquitectura, se conserva en el padre el co
 
 ## Memoria entre sesiones
 
-Guardas conceptos concretos cuando lo pides. Desde `0.12.0`, `memoria-recuerda` abre en ese momento un PR con las notas de proyecto nuevas o modificadas. Una sesión posterior puede recuperar todo o filtrar por tema.
+Guardas conceptos concretos cuando lo pides. Desde `0.12.0`, `memoria-guardar` abre en ese momento un PR con las notas de proyecto nuevas o modificadas. Una sesión posterior puede recuperar todo o filtrar por tema. Desde `0.16.0`, `dirige` recupera al empezar las notas pertinentes para su encargo.
 
 ```mermaid
 flowchart TD
     accTitle: Memoria del proyecto entre dos sesiones
-    accDescr: A petición del usuario, memoria-recuerda guarda las notas de proyecto en un PR propio desde la rama principal y las de máquina en el checkout actual. Cuando una persona mezcla el PR, las notas llegan al almacén de la rama principal, que memoria-extraer consulta en otra sesión sin modificarlo.
+    accDescr: A petición del usuario, memoria-guardar guarda las notas de proyecto en un PR propio desde la rama principal y las de máquina en el checkout actual. Cuando una persona mezcla el PR, las notas llegan al almacén de la rama principal, que memoria-extraer consulta en otra sesión sin modificarlo, cuando lo pides o al empezar dirige.
 
-    actual["memoria-recuerda<br/>Sesión actual"]
+    actual["memoria-guardar<br/>Sesión actual"]
     pr["PR de memoria<br/>Solo el almacén de memoria"]
     local[("Notas de máquina<br/>Checkout actual, ignoradas")]
     memoria[(".peqa/memoria<br/>Rama principal")]
@@ -174,7 +180,7 @@ flowchart TD
     actual -->|Notas de proyecto| pr
     actual -->|Notas de máquina| local
     pr -->|Lo mezcla una persona| memoria
-    memoria -->|Pides recuperar| nueva
+    memoria -->|Pides recuperar o empieza dirige| nueva
 ```
 
 Cada repositorio conserva su memoria en `.peqa/memoria`. Las notas de proyecto llegan a la rama principal mediante su PR; mientras no se mezcle, el PR muestra qué se va a recordar. Las de máquina, como una identidad local de GitHub, quedan en tu checkout y Git las ignora. Si el repositorio no tiene remoto en GitHub o falta `gh`, la nota se guarda en local y el agente lo indica. Se reutiliza `.peqa-stack/memoria` si ya es el único almacén existente.
@@ -222,6 +228,8 @@ Inicia una nueva sesión y selecciona el skill:
 - Claude Code: `/peqa-workflows:dirige`.
 
 Desde la versión 0.9.0, los skills se llaman `dirige`, `idea`, `revisa`, `memoria-recuerda` y `memoria-extraer`. El namespace `peqa-workflows` ya identifica el plugin, por lo que sus nombres dejaron de repetir `peqa-`. Actualiza las invocaciones anteriores; no se instalan aliases de los nombres antiguos.
+
+En `0.16.0`, `memoria-recuerda` pasa a llamarse `memoria-guardar`, para que el nombre diga qué hace frente a `memoria-extraer`. Invócalo como `/peqa-workflows:memoria-guardar` en Claude Code o `$peqa-workflows:memoria-guardar` en Codex; el nombre anterior deja de existir y no hay alias. Pedir «guarda…» o «recuerda que…» lo activa; «¿recuerdas…?» o «¿qué sabemos de…?» activan `memoria-extraer`. Las notas guardadas no cambian de ruta, y el registro de uso agrupa los eventos antiguos bajo el nombre nuevo. Si Codex y Claude Code trabajan en el mismo repositorio, actualiza los dos: una versión anterior no lee el registro de uso con el nombre nuevo.
 
 Las versiones `0.5.x` a `0.8.x` usaban nombres como `peqa-dirige`; en `0.9.0` pasa a `dirige`. Las memorias y los contadores de revisión conservan sus rutas y datos. El registro opcional de uso sigue leyendo los nombres históricos y agrupa sus eventos bajo los nombres actuales. `ui-design`, añadido en `0.13.0`, no tiene nombre anterior.
 

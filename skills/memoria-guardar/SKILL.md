@@ -1,11 +1,11 @@
 ---
-name: memoria-recuerda
-description: Save or update small, durable project memories when the user asks to remember session decisions, conventions or operational context for future sessions. Use for project knowledge, not specifications, task plans or full transcripts.
+name: memoria-guardar
+description: Save or update small, durable project memories when the user asks to save or remember something new ("guarda…", "recuerda que…"), such as session decisions, conventions or operational context for future sessions. Use for project knowledge, not specifications, task plans or full transcripts.
 ---
 
-# PEQA memoria recuerda
+# PEQA memoria guardar
 
-Guarda conceptos pequeños que otra sesión necesite recuperar. El plugin es reutilizable; la memoria pertenece al proyecto elegido, no al directorio del plugin ni a una memoria global del cliente. Pedir que recuerde autoriza guardar y abrir el PR de las notas de proyecto; no agregues escrituras automáticas al implementar o extraer contexto.
+Guarda conceptos pequeños que otra sesión necesite recuperar. El plugin es reutilizable; la memoria pertenece al proyecto elegido, no al directorio del plugin ni a una memoria global del cliente. Pedir que guarde o recuerde autoriza guardar y abrir el PR de las notas de proyecto; no agregues escrituras automáticas al implementar o extraer contexto.
 
 ## Seleccionar lo que vale recordar
 

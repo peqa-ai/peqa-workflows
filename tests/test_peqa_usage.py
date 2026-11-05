@@ -160,6 +160,30 @@ class UsageTests(unittest.TestCase):
         self.assertEqual(self.invoke("status")[0], 2)
         self.assertEqual(self.record(skill="peqa-ui-design")[0], 2)
 
+    def test_memoria_recuerda_history_is_grouped_under_memoria_guardar(self):
+        self.ok("enable")
+        invocation = str(uuid.uuid4())
+        self.record(invocation, skill="memoria-guardar")
+        self.record(skill="memoria-guardar")
+        data = self.state()
+        data["events"][0]["skill"] = "memoria-recuerda"
+        data["events"][1]["skill"] = "peqa-memoria-recuerda"
+        self.state_path.write_text(json.dumps(data))
+        before = self.state_path.read_bytes()
+        self.assertEqual(self.ok("summary")["groups"], [
+            {"skill": "memoria-guardar", "runtime": "codex",
+             "started": 2, "completed": 0, "failed": 0}])
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertEqual(self.record(invocation, skill="memoria-guardar")[1]["status"],
+                         "duplicate")
+        self.assertEqual(self.record(invocation, "completed",
+                                     skill="memoria-guardar")[1]["status"], "recorded")
+        group = self.ok("summary")["groups"][0]
+        self.assertEqual((group["skill"], group["started"], group["completed"]),
+                         ("memoria-guardar", 2, 1))
+        self.assertEqual(self.record(skill="memoria-recuerda")[0], 2)
+        self.assertEqual(self.record(skill="peqa-memoria-recuerda")[0], 2)
+
     def test_date_filter_is_inclusive_utc_and_validated(self):
         self.ok("enable")
         self.record()
@@ -177,7 +201,7 @@ class UsageTests(unittest.TestCase):
     def test_all_supported_skills_and_runtimes_are_accepted(self):
         self.ok("enable")
         for skill in ("dirige", "idea", "revisa",
-                      "memoria-recuerda", "memoria-extraer", "ui-design"):
+                      "memoria-guardar", "memoria-extraer", "ui-design"):
             for runtime in ("t3-codex", "t3-claude", "codex", "claude"):
                 self.assertEqual(self.record(skill=skill, runtime=runtime)[0], 0)
         self.assertEqual(self.ok("status")["event_count"], 24)
