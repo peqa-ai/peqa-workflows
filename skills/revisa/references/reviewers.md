@@ -16,12 +16,12 @@ Una ruta deshabilitada o rechazada en T3 no se elude con un CLI. Si la ruta Sol 
 
 Aplica esta sección, con Claude o Codex como padre, cuando [herramientas del entorno](../../../references/runtime-tools.md#detectar-y-elegir) identifica Orca. Es la ruta preferida dentro de Orca porque la revisión queda visible como un worker. Antes de reservar comprueba que `"$ORCA" status` responde, donde `$ORCA` es el ejecutable de `ORCA_CLI_COMMAND`; carga la guía con `"$ORCA" skills get orchestration`, y verifica que Codex está instalado y autenticado con `codex --version` y `codex login status`, sin leer archivos de autenticación. Si algo falla, usa la sección del cliente del padre sin consumir una pasada por Orca.
 
-Lanza cada pasada como un worker nuevo en el checkout del padre:
+Lanza cada pasada como un worker nuevo en el checkout revisado, `$REVIEW_REPO`, que puede no ser el workspace de Orca de la sesión:
 
 ```sh
 "$ORCA" orchestration worker-start --agent codex \
   --model gpt-6.1-sol --effort xhigh \
-  --worktree current --task-title "revisa: PR $PR_NUMBER" \
+  --worktree "path:$REVIEW_REPO" --task-title "revisa: PR $PR_NUMBER" \
   --spec-file "$REVIEW_PROMPT" --json
 ```
 

@@ -10,7 +10,7 @@ El usuario decidió el 8 de noviembre de 2026 que Orca quede al mismo nivel que 
 | --- | --- | --- |
 | S1 · Hijo de otro proveedor | Claude Code en Orca, `orca status` ok, sin T3; el usuario pide que Codex implemente | Host Orca; carga `skills get orchestration`; `worker-start --agent codex --worktree current` con el encargo en `--spec-file`, sin `--keep-open`; termina el turno; PR adjunto con `reference add` |
 | S2 · Mismo proveedor | Mismo entorno; dos partes independientes y pequeñas | `Agent` nativo para cada parte, en paralelo y con un editor por archivo; ningún worker de Orca para implementar |
-| S3 · `revisa` en Orca | Claude Code en Orca, Codex autenticado, PR sin revisiones | Comprobaciones antes de reservar; `worker-start --agent codex --model gpt-6.1-sol --effort xhigh --worktree current`; captura de HEAD y `git status` antes y después; `CR 1/3` |
+| S3 · `revisa` en Orca | Claude Code en Orca, Codex autenticado, PR sin revisiones | Comprobaciones antes de reservar; `worker-start --agent codex --model gpt-6.1-sol --effort xhigh --worktree path:<checkout revisado>`; captura de HEAD y `git status` antes y después; `CR 1/3` |
 | S4 · Orca no responde | `ORCA_*` presentes, `orca status` falla | Ruta de Claude Code con `codex exec`; ninguna pasada gastada en Orca |
 | S5 · T3 lanzado desde Orca | Codex con herramientas de T3 y variables de Orca | Manda T3: `delegate_task` para el hijo Claude, `link_pull_request` y watcher; nada de `reference add` |
 | S6 · Entrega en Orca | Implementación integrada por un worker en el mismo checkout; CI de 10 minutos | Commit, push y PR borrador; `reference add`; `gh pr checks --watch` con límite; el worker del mismo checkout no se retira; pregunta por el merge |
