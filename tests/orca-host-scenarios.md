@@ -39,6 +39,18 @@ Segunda ronda, con dos agentes nuevos sobre los casos corregidos:
 - **S3 con `pytest` a pedido del revisor:** cargó la guía antes de reservar y lanzó el worker con `--task-title "revisa: PR 42"`. Anotó `.pytest_cache/` y `coverage.xml` como generados y dio la pasada por válida solo si ningún otro archivo cambiaba.
 - **S6 con dos workers, uno en el mismo checkout y otro en un worktree nuevo:** dejó el primero cerrado. Liberó el segundo con `worker-release` y retiró su workspace con `worktree rm`, sin forzar, después de las comprobaciones de `cleanup.md`. Señaló que un CI de 25 minutos no cabe en un comando en primer plano. La regla ahora admite la ejecución en segundo plano del cliente que despierta al padre, como `run_in_background` en Claude Code; esa última redacción no se volvió a simular.
 
+## Primera sesión real: CR 1/3 del PR #11
+
+El PR #11 se revisó con la ruta nueva. Un padre Claude Code en Orca 1.4.253 lanzó `worker-start --agent codex --model gpt-6.1-sol --effort xhigh --worktree "path:<checkout manual>"`. El recibo dio `state: ready` con modelo y esfuerzo admitidos y el workspace resuelto al checkout del PR. El revisor hizo dos preguntas reales con `ask` y recibió las respuestas con `reply`. Entregó su informe con `worker_done`, y la captura de HEAD y `git status --porcelain --ignored` quedó idéntica antes y después. `worker-show` no expone el modelo ejecutado, así que queda como desconocido.
+
+El revisor encontró un consumidor omitido. La puntuación visual de `ui-design`, obligatoria en `dirige` para cambios de interfaz, seguía mandando la CLI del otro proveedor dentro de Orca; una simulación fresca lo reprodujo. `scoring.md` ahora usa T3, después Orca y después el cliente nativo. En Orca, el revisor del otro proveedor es un worker, con las capturas como rutas en el encargo y la forma CLI como respaldo si no puede abrirlas.
+
+Simulaciones de esa corrección, con contexto fresco:
+
+- **Padre Claude en Orca:** worker de Codex, `Agent` para Opus y la comprobación de solo lectura.
+- **Padre Codex en Orca:** worker de Claude y subagente nativo para Codex. Señaló que un worker de Claude quizá no lea capturas fuera del checkout, y por eso se añadió el respaldo por CLI.
+- **Regresión:** T3 conserva `delegate_task` y la terminal sin hosts conserva `codex exec`.
+
 Ambigüedades anteriores a este cambio, que siguen abiertas: cuándo abrir el PR borrador si aún no hay nada que commitear, cómo verificar un historial de revisión en cero y si una revisión previa al PR se ofrece como comentario al abrirlo.
 
-Estas simulaciones no prueban una sesión real en Orca. Esa prueba, con un padre Claude y un hijo Codex, queda pendiente antes de mezclar.
+Las simulaciones no prueban una sesión real. La revisión CR 1/3 ejercitó en real el worker de Codex, `ask`, `reply` y `worker_done`; falta una sesión real de `dirige` con un hijo Codex que implemente.

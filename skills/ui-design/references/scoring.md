@@ -6,14 +6,31 @@ Revisado el 2026-11-03. Después de la crítica, dos revisores independientes pu
 
 | Padre en | Claude Opus | Codex |
 | --- | --- | --- |
-| Claude Code, dentro o fuera de T3 | `Agent` de propósito general con `model: "opus"` | Fuera de T3, Codex CLI en la forma de abajo; en T3, `delegate_task` |
-| Codex, dentro o fuera de T3 | Fuera de T3, Claude Code CLI en la forma de abajo; en T3, `delegate_task` con el Opus más reciente del catálogo | Subagente nativo, o `delegate_task` en T3 si el padre no usa ya esa configuración |
+| Claude Code, en cualquier host | `Agent` de propósito general con `model: "opus"` | En T3, `delegate_task`; en Orca, un worker de Orca; fuera de ambos, Codex CLI. Las dos formas están abajo |
+| Codex, en cualquier host | En T3, `delegate_task` con el Opus más reciente del catálogo; en Orca, un worker de Orca; fuera de ambos, Claude Code CLI. Las dos formas están abajo | Subagente nativo, o `delegate_task` en T3 si el padre no usa ya esa configuración |
 
 Codex usa el modelo y el esfuerzo de [revisa](../../revisa/references/reviewers.md): `gpt-6.1-sol` en `xhigh`. Opus usa el esfuerzo por defecto del host. En T3, `delegate_task` sigue [subagentes en T3](../../../references/runtime-tools.md#subagentes-en-t3), con un encargo nuevo por revisor y ronda.
 
 Un revisor está disponible cuando su ruta existe y la ejecución termina con una respuesta completa. Usa solo CLIs ya instalados y autenticados: Codex se comprueba como indica [revisa](../../revisa/references/reviewers.md#agente-principal-en-claude-code-fuera-de-t3-code), y Claude Code con `claude --version` y `claude auth status`. Lanza los dos a la vez. Solo cuentan Claude Opus y Codex: si uno falta, puntúa el otro y el informe dice cuál faltó y por qué; sin ninguno, el informe declara pendiente la puntuación. Registra para cada uno el modelo y el esfuerzo solicitados y los efectivos que exponga el host.
 
-`$NOTAS` y `$EVIDENCIA` son carpetas fuera del checkout, y `$UI_DESIGN` es la carpeta de este skill. Codex desde Claude Code, con una opción `-i` por captura antes de `--model`:
+`$NOTAS` y `$EVIDENCIA` son carpetas fuera del checkout, y `$UI_DESIGN` es la carpeta de este skill.
+
+El host se elige como indica [herramientas del entorno](../../../references/runtime-tools.md#detectar-y-elegir): T3, después Orca y después el cliente nativo. En Orca, el revisor del otro proveedor es un worker nuevo por revisor y ronda, en el checkout del cambio y sin `--keep-open`; el del mismo proveedor sigue siendo el `Agent` o subagente nativo de la tabla. `$ORCA` es el ejecutable de `ORCA_CLI_COMMAND`. Con padre Claude Code, el worker es Codex; con padre Codex, es Claude:
+
+```sh
+# Padre Claude Code
+"$ORCA" orchestration worker-start --agent codex --model gpt-6.1-sol --effort xhigh \
+  --worktree "path:$REPO" --task-title "ui-design: puntuación" \
+  --spec-file "$NOTAS/encargo.md" --json
+# Padre Codex
+"$ORCA" orchestration worker-start --agent claude --model opus \
+  --worktree "path:$REPO" --task-title "ui-design: puntuación" \
+  --spec-file "$NOTAS/encargo.md" --json
+```
+
+`worker-start` no adjunta imágenes. El encargo lista las rutas absolutas de cada captura en `$EVIDENCIA` y pide abrirlas con la herramienta de lectura de imágenes del agente. Si el revisor no puede verlas, por ejemplo porque su cliente no lee fuera del checkout, su nota no cuenta: repite ese revisor con la forma CLI de abajo, que adjunta las capturas, y el informe lo dice. Orca tampoco limita al worker a solo lectura: el encargo lo prohíbe y el padre compara HEAD y `git status --porcelain` antes y después, como en [revisa](../../revisa/references/reviewers.md#agente-principal-en-orca-fuera-de-t3-code). Para lanzarlos a la vez, inicia primero el worker y después el `Agent` o subagente nativo; cuando este termine, termina el turno hasta el `worker_done`, que trae las notas. Ajusta las opciones a la guía de `skills get orchestration` de la versión instalada. Si Orca no responde, o si `worker-start` falla o trae `failedStage`, no lo repitas y usa la forma CLI de abajo.
+
+Fuera de T3 y de Orca, Codex desde Claude Code, con una opción `-i` por captura antes de `--model`:
 
 ```sh
 codex -a never exec \
