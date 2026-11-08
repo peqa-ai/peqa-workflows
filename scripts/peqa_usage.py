@@ -45,7 +45,7 @@ def canonical_skill(skill):
     return LEGACY_SKILLS.get(skill, skill)
 
 
-RUNTIMES = ("t3-codex", "t3-claude", "codex", "claude")
+RUNTIMES = ("t3-codex", "t3-claude", "orca-codex", "orca-claude", "codex", "claude")
 PHASES = ("started", "completed", "failed")
 SCOPE = "observed_events_only"
 MAX_EVENTS = 50_000

@@ -1,8 +1,8 @@
 # PEQA workflows
 
-Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
+Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
 
-`0.17.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.18.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -46,7 +46,7 @@ Las consultas punteadas se usan cuando aportan al trabajo. También puedes invoc
 - La [revisión de seguridad](skills/revisa/references/security.md) contrasta versiones oficiales de OWASP Top 10 y NIST SSDF, comprueba controles pertinentes al cambio y declara los pendientes. No equivale a una certificación ni publica aprobaciones en GitHub.
 - Los workflows y swarms se usan cuando tú los eliges. La ejecución normal utiliza subagentes.
 
-En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Fuera de T3 se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/revisa/references/budget.md).
+En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entorno. Desde `0.18.0`, en **Orca** se usan sus workers supervisados con el mismo criterio: subagente nativo si el hijo usa el mismo proveedor y termina en el turno, y worker de Orca para otro proveedor, segundo plano o un worktree aparte. Dentro de Orca, `revisa` lanza al revisor Sol como worker. Fuera de T3 y de Orca se usan las herramientas nativas de Codex o Claude Code. Si el revisor preferido no está disponible, se declara la alternativa utilizada. Consulta [coordinación entre sesiones](skills/dirige/references/coordination.md), [herramientas del entorno](references/runtime-tools.md) y [presupuesto de revisión](skills/revisa/references/budget.md).
 
 ## Qué le puedes pedir
 

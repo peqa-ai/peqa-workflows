@@ -12,6 +12,27 @@ Selecciona el proveedor que realmente ofrezca `gpt-6.1-sol`, verifica que acepte
 
 Una ruta deshabilitada o rechazada en T3 no se elude con un CLI. Si la ruta Sol no está disponible, el fallback ya autorizado por este skill es un revisor independiente del motor actual a través de una ruta que el host permita. Respeta sus reglas para elegir delegación T3 o subagente nativo. Informa la limitación y el modelo efectivo. Si tampoco existe esa ruta, informa revisión incompleta.
 
+## Agente principal en Orca, fuera de T3 Code
+
+Aplica esta sección, con Claude o Codex como padre, cuando [herramientas del entorno](../../../references/runtime-tools.md#detectar-y-elegir) identifica Orca. Es la ruta preferida dentro de Orca porque la revisión queda visible como un worker. Antes de reservar comprueba que `"$ORCA" status` responde, donde `$ORCA` es el ejecutable de `ORCA_CLI_COMMAND`; carga la guía con `"$ORCA" skills get orchestration`, y verifica que Codex está instalado y autenticado con `codex --version` y `codex login status`, sin leer archivos de autenticación. Si algo falla, usa la sección del cliente del padre sin consumir una pasada por Orca.
+
+Lanza cada pasada como un worker nuevo en el checkout del padre:
+
+```sh
+"$ORCA" orchestration worker-start --agent codex \
+  --model gpt-6.1-sol --effort xhigh \
+  --worktree current --task-title "revisa: PR $PR_NUMBER" \
+  --spec-file "$REVIEW_PROMPT" --json
+```
+
+`$REVIEW_PROMPT` vive fuera del código revisado. Ajusta las opciones a la guía de `skills get orchestration` de la versión instalada. Un `worker-start` iniciado consume la pasada aunque falle después. Si su recibo trae `failedStage`, no lo repitas: sigue la recuperación de esa guía y, si queda presupuesto, reserva otra pasada para la ruta del cliente del padre.
+
+Orca no limita al worker a solo lectura, así que el brief lo prohíbe: no edita, no hace commit ni push, no publica comentarios ni revisiones en GitHub y no inicia workers ni subagentes. Antes de lanzarlo, el padre anota HEAD y `git status --porcelain` del checkout y de sus submódulos, y no edita mientras el revisor trabaja. Si ejecuta pruebas que el revisor pide, anota los archivos que esas ejecuciones generan. Al recibir `worker_done` repite la comprobación. Si algo cambió y no viene de esas ejecuciones, la pasada no vale como revisión independiente: informa qué cambió, consérvalo sin restaurarlo por tu cuenta y decide con el usuario.
+
+El informe llega en el `worker_done` del revisor; si el aviso indica un `check`, ejecútalo para leerlo completo. Registra el modelo y el esfuerzo solicitados y lo que `worker-show` exponga del efectivo; si no lo expone, decláralo desconocido. Un worker que se detiene sin `worker_done`, un timeout o un informe incompleto no constituyen aprobación. Una comprobación posterior es otro worker, nunca un `send` al anterior.
+
+Si Orca no responde, sigue la sección del cliente del padre: subagente nativo en Codex, o `codex exec` desde Claude Code con su fallback.
+
 ## Agente principal en Codex, fuera de T3 Code
 
 Usa un subagente nativo con selección explícita de `gpt-6.1-sol` y `xhigh` cuando esos controles estén disponibles. Si el cliente no puede seleccionar o ejecutar la combinación, utiliza el fallback independiente del motor actual. Registra el esfuerzo como desconocido si el host no lo expone; no lo anuncies como xhigh.
