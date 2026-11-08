@@ -12,7 +12,7 @@ Sin activación, `status`, `summary` y `record` no crean directorios ni archivos
 
 ## Durante una invocación
 
-Si `status` indica activación, el agente que ejecuta el skill genera un UUIDv4 aleatorio para esa invocación y lo conserva hasta terminar. Usa el nombre canónico del skill y el runtime observado: `t3-codex`, `t3-claude`, `codex` o `claude`. No atribuyas invocaciones de herramientas o lecturas de archivos a un skill que no se ejecutó.
+Si `status` indica activación, el agente que ejecuta el skill genera un UUIDv4 aleatorio para esa invocación y lo conserva hasta terminar. Usa el nombre canónico del skill y el runtime observado: `t3-codex`, `t3-claude`, `orca-codex`, `orca-claude`, `codex` o `claude`. El runtime sigue el host que [herramientas del entorno](runtime-tools.md#detectar-y-elegir) identifica: T3, después Orca y después el cliente nativo. No atribuyas invocaciones de herramientas o lecturas de archivos a un skill que no se ejecutó.
 
 ```sh
 python3 "$PEQA_PLUGIN/scripts/peqa_usage.py" record --repo "$PEQA_REPO" \
@@ -33,4 +33,4 @@ El filtro es inclusivo y usa fechas UTC. El resultado agrupa inicios, cierres y 
 
 El archivo admite hasta 50.000 eventos y 16 MiB; al alcanzar el límite informa el error sin borrar datos ni rotar en silencio. Un fallo de registro no interrumpe el trabajo principal: comunica que ese evento no se guardó. El registro no lee memorias ni añade comentarios en GitHub.
 
-Desde 0.9.0, registra nombres sin `peqa-`, y desde 0.16.0 `memoria-guardar` en lugar de `memoria-recuerda`. El lector conserva los eventos históricos con los nombres anteriores y los agrupa bajo el nombre actual; las consultas no reescriben el archivo y los nuevos eventos usan el nombre canónico. Un helper anterior no reconoce los nombres nuevos y rechaza el registro que los contenga; actualiza todas las instalaciones de Codex y Claude Code que usen el mismo repositorio.
+Desde 0.9.0, registra nombres sin `peqa-`, desde 0.16.0 `memoria-guardar` en lugar de `memoria-recuerda`, y desde 0.18.0 los runtimes `orca-codex` y `orca-claude`. El lector conserva los eventos históricos con los nombres anteriores y los agrupa bajo el nombre actual; las consultas no reescriben el archivo y los nuevos eventos usan el nombre canónico. Un helper anterior no reconoce los nombres nuevos y rechaza el registro que los contenga; actualiza todas las instalaciones de Codex y Claude Code que usen el mismo repositorio.

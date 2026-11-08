@@ -1,6 +1,6 @@
 # Coordinar trabajo compartido
 
-Soporte: T3 Code, Codex y Claude Code. Usa las herramientas reales del host según [runtimes](runtimes.md); no agregues otro cliente o servicio para conseguir mensajería. La coordinación detecta indicios y negocia reparto; no es un lock de archivos o infraestructura.
+Soporte: T3 Code, Orca, Codex y Claude Code. Usa las herramientas reales del host según [runtimes](runtimes.md); no agregues otro cliente o servicio para conseguir mensajería. La coordinación detecta indicios y negocia reparto; no es un lock de archivos o infraestructura.
 
 ## Descubrir antes de escribir
 
@@ -21,6 +21,10 @@ Mantén en el brief una relación breve de sesión/agente, recurso, propietario 
 - Respeta modos y restricciones de envío. Un subagente nativo puede ser de solo lectura para mensajería T3: dirígete a su padre o al canal nativo permitido. No uses `t3_thread_send` para iniciar nuevas revisiones/rechecks: siguen requiriendo una nueva delegación.
 
 Al citar un hilo al usuario utiliza primero su `link` literal; si no existe, el formato es `[título](t3-thread://v1/<id>)`, con el ID real.
+
+## Ruta Orca
+
+Cada sesión de Orca es una sesión de Claude Code o de Codex: descubre y escribe a las sesiones independientes por la ruta de su cliente, descrita abajo. Cuando el host es Orca, o el recurso compartido vive en un workspace de Orca, añade su vista con el ejecutable de `ORCA_CLI_COMMAND`: `<orca> worktree ps --json` resume la orquestación activa en cada workspace y `<orca> worktree list --json` da sus rutas y ramas. Compara esas rutas con los recursos que tocarás. A tus propios workers escríbeles con `<orca> orchestration send --to dispatch:<dispatch_id>`; no envíes a dispatches ajenos ni escribas en la terminal de otra sesión. `send` a un worker terminado lo reabre como tarea nueva: no lo uses para avisar.
 
 ## Ruta Codex fuera de T3
 

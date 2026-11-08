@@ -22,7 +22,7 @@ Si hay varios PRs, muestra el estado y revisión exacta de cada uno. El consolid
 
 ## Plantilla adaptable
 
-Usa el idioma de la conversación o del informe solicitado. Adapta Markdown a texto plano o a los campos del cliente conservando el orden: título, atribución, mínimos, alcance y motivo. Esta plantilla sirve en T3 Code, Codex y Claude Code sin herramientas de publicación.
+Usa el idioma de la conversación o del informe solicitado. Adapta Markdown a texto plano o a los campos del cliente conservando el orden: título, atribución, mínimos, alcance y motivo. Esta plantilla sirve en T3 Code, Orca, Codex y Claude Code sin herramientas de publicación.
 
 ```markdown
 # Review consolidado: {recomendación}
