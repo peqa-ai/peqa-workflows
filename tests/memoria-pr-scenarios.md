@@ -6,7 +6,7 @@ Pruebas de comportamiento de `memoria-guardar` (antes `memoria-recuerda`), no te
 
 | Caso | Condiciones | Resultado esperado |
 | --- | --- | --- |
-| Nota de proyecto y de máquina | GitHub con `gh`; checkout en una rama de trabajo con cambios sin commit | Worktree temporal desde la rama principal remota; nota `project` guardada ahí; commit solo de `.peqa/memoria`; push, PR abierto sin merge; verificación con `ls-remote` y retirada del worktree; nota `machine` en el checkout actual; la rama de trabajo queda intacta |
+| Nota de proyecto y de máquina | GitHub con `gh`; checkout en una rama de trabajo con cambios sin commit | Worktree temporal desde la rama principal remota; nota `project` guardada ahí; commit solo de `.peqa/memoria`; push, PR abierto sin merge salvo que el usuario elija mezclarlo (desde `0.17.0`, ver `memoria-aprobacion-scenarios.md`); verificación con `ls-remote` y retirada del worktree; nota `machine` en el checkout actual; la rama de trabajo queda intacta |
 | Sin GitHub | Remoto en GitLab y sin `gh` | Guardar en el checkout actual e informar por qué no hay PR |
 | Actualizar una nota existente | La nota está en la rama principal | Leer la nota y su SHA en el worktree temporal; `save` con `--expected-sha`; PR con el cambio |
 | PR de memoria abierto | Una rama `memoria/` del mismo repositorio toca el mismo concepto | Crear el worktree desde esa rama y actualizar su PR; si es de un fork, abrir uno propio |

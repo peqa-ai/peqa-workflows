@@ -2,7 +2,7 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, con integración preferente en **T3 Code**. Se adaptan al proyecto donde los uses.
 
-`0.16.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.17.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Cómo se reparte el trabajo
 
@@ -164,12 +164,12 @@ Cuando pidas guardar memoria de esta arquitectura, se conserva en el padre el co
 
 ## Memoria entre sesiones
 
-Guardas conceptos concretos cuando lo pides. Desde `0.12.0`, `memoria-guardar` abre en ese momento un PR con las notas de proyecto nuevas o modificadas. Una sesión posterior puede recuperar todo o filtrar por tema. Desde `0.16.0`, `dirige` recupera al empezar las notas pertinentes para su encargo.
+Guardas conceptos concretos cuando lo pides. Desde `0.12.0`, `memoria-guardar` abre en ese momento un PR con las notas de proyecto nuevas o modificadas. Una sesión posterior puede recuperar todo o filtrar por tema. Desde `0.16.0`, `dirige` recupera al empezar las notas pertinentes para su encargo. Desde `0.17.0`, `memoria-guardar` te pregunta por cada nota antes de escribirla (guardar, editar o descartar) y, con el PR abierto, si quieres mezclarlo ahora. En T3 ambas preguntas aparecen en la propia interfaz de T3.
 
 ```mermaid
 flowchart TD
     accTitle: Memoria del proyecto entre dos sesiones
-    accDescr: A petición del usuario, memoria-guardar guarda las notas de proyecto en un PR propio desde la rama principal y las de máquina en el checkout actual. Cuando una persona mezcla el PR, las notas llegan al almacén de la rama principal, que memoria-extraer consulta en otra sesión sin modificarlo, cuando lo pides o al empezar dirige.
+    accDescr: A petición del usuario, memoria-guardar propone las notas y el usuario aprueba cada una. Guarda las de proyecto aprobadas en un PR propio desde la rama principal y las de máquina en el checkout actual. Al final pregunta si mezclar el PR; cuando el usuario acepta, las notas llegan al almacén de la rama principal, que memoria-extraer consulta en otra sesión sin modificarlo, cuando lo pides o al empezar dirige.
 
     actual["memoria-guardar<br/>Sesión actual"]
     pr["PR de memoria<br/>Solo el almacén de memoria"]
@@ -177,13 +177,13 @@ flowchart TD
     memoria[(".peqa/memoria<br/>Rama principal")]
     nueva["memoria-extraer<br/>Nueva sesión"]
 
-    actual -->|Notas de proyecto| pr
-    actual -->|Notas de máquina| local
-    pr -->|Lo mezcla una persona| memoria
+    actual -->|Notas de proyecto aprobadas| pr
+    actual -->|Notas de máquina aprobadas| local
+    pr -->|Si eliges mezclarlo| memoria
     memoria -->|Pides recuperar o empieza dirige| nueva
 ```
 
-Cada repositorio conserva su memoria en `.peqa/memoria`. Las notas de proyecto llegan a la rama principal mediante su PR; mientras no se mezcle, el PR muestra qué se va a recordar. Las de máquina, como una identidad local de GitHub, quedan en tu checkout y Git las ignora. Si el repositorio no tiene remoto en GitHub o falta `gh`, la nota se guarda en local y el agente lo indica. Se reutiliza `.peqa-stack/memoria` si ya es el único almacén existente.
+Cada repositorio conserva su memoria en `.peqa/memoria`. Antes de escribir, cada nota se te muestra con su alcance y contenido, y nada se guarda sin tu aprobación. Las notas de proyecto llegan a la rama principal mediante su PR; mientras no se mezcle, el PR muestra qué se va a recordar. Las de máquina, como una identidad local de GitHub, quedan en tu checkout y Git las ignora. Si el repositorio no tiene remoto en GitHub o falta `gh`, la nota se guarda en local y el agente lo indica. Se reutiliza `.peqa-stack/memoria` si ya es el único almacén existente.
 
 Se guardan conceptos pequeños con fuente, fecha y verificación. Recuperar una nota no ejecuta sus comandos ni demuestra que siga vigente. Consulta el [formato y los límites](references/project-memory.md).
 
