@@ -28,4 +28,6 @@ Primera ronda, seis casos. Todos aplicaron la aprobación antes de `save`, con p
 
 Se corrigieron en `SKILL.md` y `project-memory.md`. Un agente nuevo repitió los casos de alcance dudoso con todo descartado y de nota pegada con merge. Siguió el texto corregido: Editar pasó a la respuesta libre, se retiraron el worktree y la rama, y la nota pegada se preguntó por los metadatos añadidos. También señaló una regla de retirada duplicada entre ambos archivos y la falta de recursos retirados en el informe; se corrigieron sin otra simulación.
 
+La revisión independiente (CR 1/3, `gpt-6.1-sol` en `xhigh`, sobre `7ad00ec`) encontró R1: el merge no estaba ligado al commit que el usuario vio, así que un push concurrente durante la pregunta podía mezclar contenido no aprobado. Se corrigió exigiendo `--match-head-commit` con el SHA comprobado y renovando la aprobación si el head cambia. `gh pr merge --help` (2.102.0) confirma la opción. No se reprodujo el push concurrente.
+
 Huecos anteriores a este cambio, fuera de su alcance: el catálogo en el worktree temporal no ve las notas de máquina existentes; no se fija el directorio de `gh pr create`; el fallback sin PR no detalla qué hacer con un worktree ya preparado; `verification` no distingue un hecho afirmado por el usuario de una decisión.
