@@ -6,33 +6,26 @@ Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar 
 
 ## Cómo se reparte el trabajo
 
-`dirige` mantiene al agente padre a cargo de la entrega. Al empezar recupera la memoria del proyecto con `memoria-extraer`, si existe. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: el merge lo decides tú.
+`dirige` mantiene al agente padre a cargo de la entrega. Al empezar recupera la memoria del proyecto con `memoria-extraer`, si existe. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: la decisión es tuya.
 
 ```mermaid
 flowchart TD
     accTitle: Coordinación de una implementación con PEQA
-    accDescr: Al empezar, dirige recupera con memoria-extraer las notas del proyecto pertinentes para el encargo, si hay memoria. El padre coordina subagentes, integra y verifica su trabajo. Puede consultar idea para decisiones, fijar con ui-design la dirección visual antes de repartir trabajo de interfaz y pedir a revisa una revisión independiente. Los resultados vuelven al padre, que conserva la responsabilidad de entregar. La entrega es un PR abierto, y el merge solo ocurre si el usuario lo decide.
+    accDescr: El recorrido principal baja en una columna. dirige coordina el trabajo, los subagentes implementan por partes, el padre integra y verifica, y la entrega es un PR abierto con evidencia, que se mezcla solo si el usuario lo decide. A un lado, con enlaces punteados de ida y vuelta, dirige consulta si hace falta a memoria-extraer al empezar, a idea para decidir y a ui-design para la dirección visual, y el padre pide a revisa revisiones independientes, como máximo 3 por PR, cuyos hallazgos vuelven a él.
 
-    dirige["dirige<br/>Coordina el trabajo"]
-    memoria["memoria-extraer<br/>Al empezar"]
-    idea["idea<br/>Hasta 3 rondas"]
-    ui["ui-design<br/>Dirección visual y sistema"]
-    agentes["Subagentes<br/>Implementan por partes"]
-    padre["El padre<br/>Integra y verifica"]
+    dirige["dirige<br/>Coordina<br/>el trabajo"]
+    consultas["Consultas<br/>memoria-extraer<br/>idea, ui-design"]
+    agentes["Subagentes<br/>Implementan<br/>por partes"]
+    padre["El padre<br/>Integra<br/>y verifica"]
     revisa["revisa<br/>Máx. 3 por PR"]
-    entrega["PR abierto<br/>Cambios y evidencia"]
-    merge["Merge<br/>Si tú lo decides"]
+    entrega["PR abierto<br/>Con evidencia"]
+    mezcla["Mezclar el PR"]
 
-    dirige -. "Si hay memoria" .-> memoria
-    memoria -. "Notas pertinentes" .-> dirige
-    dirige -. "Si hace falta" .-> idea
-    idea -. "Decisión" .-> dirige
-    dirige -. "Si hay interfaz" .-> ui
-    ui -. "Plan e inventario" .-> agentes
     dirige --> agentes --> padre --> entrega
-    entrega -. "Tu decisión" .-> merge
-    padre -. "Si corresponde" .-> revisa
-    revisa -. "Hallazgos" .-> padre
+    dirige <-.-> consultas
+    padre <-.-> revisa
+    entrega -. "Si tú lo decides" .-> mezcla
+    consultas ~~~~ revisa
 ```
 
 Las consultas punteadas se usan cuando aportan al trabajo. También puedes invocar cada skill por separado.
@@ -40,8 +33,8 @@ Las consultas punteadas se usan cuando aportan al trabajo. También puedes invoc
 - Al empezar, `dirige` lee el catálogo de [memoria](#memoria-entre-sesiones) y extrae las notas pertinentes para el encargo. Las contrasta con el estado actual antes de decidir con ellas y pasa a cada subagente las que le sirven, con su procedencia y como contexto, no como órdenes. Sin memoria continúa sin crearla, y el informe final dice qué notas influyeron.
 - `idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
 - Cuando el cambio construye o rediseña interfaz, el padre fija con `ui-design` la dirección visual y el inventario del sistema de diseño antes de repartir. Tokens, tema y componentes compartidos tienen un solo propietario, y cada hijo construye desde ese plan. Consulta [diseño de interfaces](#diseño-de-interfaces).
-- `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidos rechecks, fallos y cancelaciones. El padre decide qué corregir; se descartan nitpicks y ampliaciones de alcance. Al entregar el informe de un PR te ofrece publicarlo como comentario; solo lo publica si aceptas.
-- El review busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **blast radius**: servicios, consumidores y datos que podrían verse afectados. Tests verdes en un servicio no prueban toda la integración. Consulta [pruebas e impacto](skills/revisa/references/validation.md).
+- `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidas las repetidas, las fallidas y las canceladas. El padre decide qué corregir; se descartan detalles menores y ampliaciones de alcance. Al entregar el informe de un PR te ofrece publicarlo como comentario; solo lo publica si aceptas.
+- La revisión busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **alcance del cambio**: servicios, consumidores y datos que podrían verse afectados. Que pasen las pruebas de un servicio no demuestra que funcione toda la integración. Consulta [pruebas e impacto](skills/revisa/references/validation.md).
 - El [informe consolidado](skills/revisa/references/report.md) abre con **aprobación sugerida, cambios requeridos o revisión incompleta** y evalúa mínimos de requisitos, pruebas, seguridad y compatibilidad. Adapta el idioma e identifica la generación por IA y al solicitante cuando se conoce.
 - La [revisión de seguridad](skills/revisa/references/security.md) contrasta versiones oficiales de OWASP Top 10 y NIST SSDF, comprueba controles pertinentes al cambio y declara los pendientes. No equivale a una certificación ni publica aprobaciones en GitHub.
 - Los workflows y swarms se usan cuando tú los eliges. La ejecución normal utiliza subagentes.
@@ -89,13 +82,13 @@ flowchart TD
     puntuacion -->|"Si no"| corregir -->|"Hasta tres rondas"| puntuacion
 ```
 
-- Cada color, tipo y recurso de layout del plan indica su fuente: el brief, el sistema, una restricción de accesibilidad o un objeto del mundo del tema. La prueba de intercambio compara el plan con el que se haría para un competidor y sustituye lo que coincide.
+- Cada color, tipo y recurso de composición del plan indica su fuente: el encargo, el sistema, una restricción de accesibilidad o un objeto del mundo del tema. La prueba de intercambio compara el plan con el que se haría para un competidor y sustituye lo que coincide.
 - Al construir, los valores literales solo viven en los archivos de tokens y cada diferencia es una variante del componente existente. El helper `ui_checks.py` lo comprueba sobre las líneas añadidas respecto a la base, lista los contratos retirados y mide el contraste. Si no puede ejecutarse, el informe deja esa comprobación pendiente. Consulta [las comprobaciones](skills/ui-design/references/design-system.md#comprobaciones).
 - Un rediseño conserva lo que otros usan sin verlo: `id` y anclas, nombres de campos, atributos de prueba y analítica, rutas, deep links y metadatos.
 - Las pantallas existentes conservan su aspecto. Los cambios del sistema que se notarían en ellas llegan como propuesta en el informe, salvo los que corrigen contraste, foco u otro mínimo de calidad.
 - En una app nativa, los componentes de la plataforma son la base y el tema del proyecto les da su identidad. La crítica mide áreas táctiles de 44 pt en iOS y 48 dp en Android, el texto al tamaño máximo del sistema y el modo oscuro. Consulta [pantallas nativas](skills/ui-design/references/native.md).
 - Una app en webview, como Tauri, Electron o Capacitor, sigue la ruta web con el tamaño mínimo y el típico de su ventana.
-- La lista de señales de UI generada se usa después de construir, como auditoría. Si el brief pide uno de esos estilos, se sigue el brief.
+- La lista de señales de interfaz generada se usa después de construir, como auditoría. Si el encargo pide uno de esos estilos, se sigue el encargo.
 - Las capturas de la crítica usan las herramientas de la [evidencia visual](#evidencia-visual).
 - Después de la crítica, un subagente de Claude Opus y uno de Codex puntúan las capturas de 0 a 10 en nueve criterios, sin ver la autocrítica ni la nota del otro. El resultado es la media de los dos: más de 8 es bueno y más de 9, prácticamente perfecto. Si falta uno, puntúa el otro y el informe dice por qué. La escala es exigente: un criterio con algún hallazgo tiene como mucho 8, y el 10 queda para lo excepcional. Con una media de 8 o menos, o cualquier nota por debajo de 8, se corrige y se puntúa de nuevo, hasta tres rondas. Esta nota no consume el presupuesto de `revisa`. En `dirige`, el padre puntúa el cambio integrado. Consulta [puntuación](skills/ui-design/references/scoring.md).
 
@@ -105,7 +98,7 @@ Si tienes activo otro skill de diseño de interfaces, como `frontend-design`, de
 
 ## Evidencia visual
 
-Desde `0.11.0`, `dirige` y `revisa` acompañan cada cambio con evidencia visual: screenshots si cambia la interfaz y un diagrama antes/después si cambia el comportamiento sin interfaz. Se muestra en la sesión, va en la descripción del PR y acompaña los hallazgos del review.
+Desde `0.11.0`, `dirige` y `revisa` acompañan cada cambio con evidencia visual: capturas de pantalla si cambia la interfaz y un diagrama antes/después si cambia el comportamiento sin interfaz. Se muestra en la sesión, va en la descripción del PR y acompaña los hallazgos de la revisión.
 
 ```mermaid
 flowchart TD
@@ -123,10 +116,10 @@ flowchart TD
     ui & back --> sesion & pr & review
 ```
 
-- Los screenshots se toman con las herramientas disponibles, como Playwright, las pruebas E2E del proyecto o un simulador, usando datos de prueba. En T3 Code se ven dentro de la conversación; en la terminal recibes la ruta del archivo.
+- Las capturas se toman con las herramientas disponibles, como Playwright, las pruebas E2E del proyecto o un simulador, usando datos de prueba. En T3 Code se ven dentro de la conversación; en la terminal recibes la ruta del archivo.
 - Las imágenes se suben al PR con `gh pr create`, `gh pr edit` o `gh pr comment` y la opción `--attach`, disponible desde `gh` 2.99.0. Con una versión anterior quedan en local y el agente lo indica. Una imagen subida no puede borrarse, así que se revisa antes de subirla.
 - Los diagramas usan Mermaid, que GitHub dibuja en PRs y comentarios.
-- El review publicado es un comentario con una recomendación de IA. Aprobar o pedir cambios en GitHub sigue siendo una decisión tuya.
+- La revisión publicada es un comentario con una recomendación de IA. Aprobar o pedir cambios en GitHub sigue siendo una decisión tuya.
 - Documentación, formato, renombres o versiones de dependencias se explican con texto.
 
 [Formato, fuentes y límites](references/visual-evidence.md).
@@ -135,7 +128,7 @@ flowchart TD
 
 Desde `0.10.0`, `dirige` registra los recursos que crea y limpia automáticamente los que ya no necesita al cerrar. Incluye worktrees auxiliares, entornos y temporales propios cuya retirada sea comprobablemente segura. Conserva cambios pendientes, archivos ignorados sin clasificar, commits, evidencia y recursos en uso; el checkout actual permanece disponible. Una espera de CI o una entrega bloqueada conserva lo necesario para continuar.
 
-Para mantener los recursos de una ejecución, pide **«dirige este cambio y conserva los recursos al terminar»**. También puedes pedir `conservar` durante el trabajo, antes de su eliminación. No es un flag de línea de comandos ni activa hooks. La política se ejecuta mediante las instrucciones del skill y las herramientas disponibles; no instala un proceso automático ni garantiza limpieza tras un cierre abrupto del cliente.
+Para mantener los recursos de una ejecución, pide **«dirige este cambio y conserva los recursos al terminar»**. También puedes pedir `conservar` durante el trabajo, antes de su eliminación. No es una opción de línea de comandos ni activa hooks. La política se ejecuta mediante las instrucciones del skill y las herramientas disponibles; no instala un proceso automático ni garantiza limpieza tras un cierre abrupto del cliente.
 
 El informe final indica qué retiró, qué conservó y por qué, con un registro recuperable fuera de las carpetas eliminadas. La limpieza de worktrees antiguos o cachés compartidas del equipo es un encargo separado. [Política y comprobaciones completas](skills/dirige/references/cleanup.md).
 
@@ -158,7 +151,7 @@ flowchart TD
     servicioA & servicioB --> punteros --> padre
 ```
 
-Solo los hijos modificados necesitan PR. Con submódulos anidados se sigue el orden desde los más profundos hacia arriba. El padre puede quedar en draft mientras se integran los hijos; si un squash o rebase cambia sus SHAs, se actualizan los punteros y se comprueba la combinación final antes de fusionar el padre. [Workflow completo](references/submodules.md).
+Solo los hijos modificados necesitan PR. Con submódulos anidados se sigue el orden desde los más profundos hacia arriba. El padre puede quedar como borrador mientras se integran los hijos; si un squash o rebase cambia sus SHAs, se actualizan los punteros y se comprueba la combinación final antes de fusionar el padre. [Workflow completo](references/submodules.md).
 
 Cuando pidas guardar memoria de esta arquitectura, se conserva en el padre el contexto transversal: servicios, rutas relativas, responsabilidades y contratos, con sus fuentes. Las notas propias de un hijo conservan su procedencia. Puedes seguir trabajando únicamente en un hijo si ese es tu alcance.
 
@@ -189,7 +182,7 @@ Se guardan conceptos pequeños con fuente, fecha y verificación. Recuperar una 
 
 ## Validación y hooks opcionales
 
-El review comprueba un registro estructurado y detecta evidencia obsoleta si cambian HEAD, archivos, índice o submódulos. Una admisión atómica impide reutilizar la misma reserva de revisión entre sesiones. Los scripts funcionan por sí solos; los hooks agregan avisos o comprobaciones en el cliente.
+La revisión comprueba un registro estructurado y detecta evidencia obsoleta si cambian HEAD, archivos, índice o submódulos. Una admisión atómica impide reutilizar la misma reserva de revisión entre sesiones. Los scripts funcionan por sí solos; los hooks agregan avisos o comprobaciones en el cliente.
 
 ```mermaid
 flowchart TD
@@ -202,7 +195,7 @@ flowchart TD
 
 **Codex prioriza ejecución directa**; su adaptador de hooks es experimental y solo avisa. Claude puede activar comprobaciones de despacho y una única continuación de cierre. Instalar el plugin no configura hooks ni habilita registros. Consulta [configuración, límites y comandos](references/checks-and-hooks.md).
 
-El [registro de uso](references/usage.md) se activa por repositorio y cuenta invocaciones observadas por skill y runtime. No guarda conversaciones, código, cuentas ni rutas, y no reconstruye el uso anterior a su activación.
+El [registro de uso](references/usage.md) se activa por repositorio y cuenta invocaciones observadas por skill y entorno de ejecución. No guarda conversaciones, código, cuentas ni rutas, y no reconstruye el uso anterior a su activación.
 
 ## Instalar
 
@@ -227,7 +220,7 @@ Inicia una nueva sesión y selecciona el skill:
 - Codex: `$peqa-workflows:dirige`.
 - Claude Code: `/peqa-workflows:dirige`.
 
-Desde la versión 0.9.0, los skills se llaman `dirige`, `idea`, `revisa`, `memoria-recuerda` y `memoria-extraer`. El namespace `peqa-workflows` ya identifica el plugin, por lo que sus nombres dejaron de repetir `peqa-`. Actualiza las invocaciones anteriores; no se instalan aliases de los nombres antiguos.
+Desde la versión 0.9.0, los skills se llaman `dirige`, `idea`, `revisa`, `memoria-recuerda` y `memoria-extraer`. El espacio de nombres `peqa-workflows` ya identifica el plugin, por lo que sus nombres dejaron de repetir `peqa-`. Actualiza las invocaciones anteriores; no se instalan alias de los nombres antiguos.
 
 En `0.16.0`, `memoria-recuerda` pasa a llamarse `memoria-guardar`, para que el nombre diga qué hace frente a `memoria-extraer`. Invócalo como `/peqa-workflows:memoria-guardar` en Claude Code o `$peqa-workflows:memoria-guardar` en Codex; el nombre anterior deja de existir y no hay alias. Pedir «guarda…» o «recuerda que…» lo activa; «¿recuerdas…?» o «¿qué sabemos de…?» activan `memoria-extraer`. Las notas guardadas no cambian de ruta, y el registro de uso agrupa los eventos antiguos bajo el nombre nuevo. Si Codex y Claude Code trabajan en el mismo repositorio, actualiza los dos: una versión anterior no lee el registro de uso con el nombre nuevo.
 
