@@ -4,6 +4,18 @@ Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar 
 
 `0.18.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
+## Para quién es
+
+PEQA workflows está pensado para equipos. Busca que el trabajo salga igual de bien cada vez, lo haga quien lo haga:
+
+- Cada cambio termina en un PR y la persona decide si se mezcla.
+- Cada PR pasa por una revisión independiente, con un máximo de tres pasadas.
+- Las decisiones y convenciones del proyecto se guardan como memorias, y la siguiente sesión las recupera antes de empezar.
+
+No busca ser lo más rápido ni gastar menos. Quien trabaja solo puede ir más ligero con otros skills. Aquí se gana consistencia, y eso se nota cuando varias personas y agentes comparten un repositorio.
+
+Se usa diciéndole a `dirige` lo que quieres y dejándolo trabajar. `dirige` reparte el trabajo entre subagentes con las herramientas del entorno en el que estés: las de T3 Code en T3 Code, las de Orca en Orca y las nativas en Codex o Claude Code. Cada entorno lo resuelve a su manera, pero el flujo es el mismo en los cuatro.
+
 ## Cómo se reparte el trabajo
 
 `dirige` mantiene al agente padre a cargo de la entrega. Al empezar recupera la memoria del proyecto con `memoria-extraer`, si existe. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: la decisión es tuya.
