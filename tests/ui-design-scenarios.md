@@ -252,6 +252,8 @@ Fallos de redacción detectados y corregidos:
 
 Segunda tanda: un agente nuevo repitió los casos corregidos. Con «hazlo rápido» y el skill invocado por nombre aplicó el modo rápido. En `claude -p` siguió el modo rápido. El hijo pidió al padre `Switch` y un token de espacio. En `dirige`, el modo rápido no puntuó y el informe final ofreció el flujo completo. Quedaron dos dudas, aclaradas sin otra simulación: el nombre en una sesión no interactiva lleva al flujo completo, porque no toca preguntar; y la pregunta del flujo consume una ronda de `idea` aunque sea la única.
 
+La revisión CR 1/3 del PR #15 encontró un defecto: el modo rápido pedía capturas a 375 y 1440 px incluso en apps en webview, porque la excepción para Tauri, Electron y Capacitor solo figuraba en el paso 6. Ahora el modo rápido remite a esa regla. Un agente nuevo lo comprobó con una app Tauri de ventana mínima 900×640 y típica 1280×800. En el modo rápido comprobó y capturó en esos dos tamaños, sin plan ni puntuación. Invocado por su nombre, recorrió los siete pasos y puntuó. Señaló ambigüedades anteriores a este cambio sobre la regla de webview: qué anchos del mínimo de calidad sustituye cada tamaño, el alto de la ventana, las áreas táctiles en escritorio y los nombres `375.png` y `1440.png` en `scoring.md`.
+
 Los casos de sesión real anteriores con `claude -p` que esperan puntuación, como la puntuación en sesión real y el rediseño con rondas, ahora necesitan invocar `ui-design` por su nombre o decir en la petición que se quiere el flujo completo.
 
 ## Pendiente
