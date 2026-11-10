@@ -9,9 +9,26 @@ Este skill diseña desde el sistema del proyecto: cada color, medida y component
 
 Consulta el estado del [registro opcional de uso](../../references/usage.md) sin activarlo. Si el usuario ya lo habilitó y el entorno permite escribir, registra esta invocación con su ID y resultado.
 
-Si recibiste un encargo delegado que ya trae plan visual e inventario, lee los archivos del paso 1 que correspondan y [tipografía](references/typography.md), empieza en el paso 5 y trata ese plan como decidido. Termina en el paso 6 e informa desde el paso 5: el padre puntúa el cambio integrado. Los tokens, el tema y los componentes compartidos tienen el propietario que indique el encargo; si no eres tú y necesitas cambiarlos o añadir uno, pídeselo al padre y sigue con lo que no depende de ello.
+Un encargo delegado no pregunta el flujo: sigue el que indique. En el modo rápido, aplica [su sección](#modo-rápido) e informa al padre. Si el encargo trae plan visual e inventario, lee los archivos del paso 1 que correspondan y [tipografía](references/typography.md), empieza en el paso 5 y trata ese plan como decidido. Termina en el paso 6 e informa desde el paso 5: el padre puntúa el cambio integrado. Los tokens, el tema y los componentes compartidos tienen el propietario que indique el encargo; si no eres tú y necesitas cambiarlos o añadir uno, pídeselo al padre y sigue con lo que no depende de ello.
 
-## Pasos
+## Elegir el flujo
+
+El flujo completo recorre los siete pasos: plan visual, prueba de intercambio, construcción, crítica y puntuación de dos revisores en hasta tres rondas. El modo rápido aplica el cambio con el sistema existente y termina con una captura.
+
+- Si el pedido ya elige, por ejemplo «hazlo rápido» o «con todo el proceso de diseño», sigue esa elección.
+- Si no elige y la persona invocó este skill por su nombre, por ejemplo `/peqa-workflows:ui-design` o `$ui-design`, sigue el flujo completo.
+- En otro caso, pregunta antes del paso 1: «¿Quieres el flujo completo de diseño o un cambio rápido?». Describe en una línea lo que incluye cada opción y recomienda una según el pedido. La elección es de la persona, aunque el cambio parezca pequeño. Pregunta por la ruta de [preguntas al usuario](../../references/runtime-tools.md#preguntas-al-usuario), en la misma ronda que las demás dudas que ya tengas.
+- Si tocaría preguntar y nadie puede responder durante la sesión, como en una ejecución no interactiva, sigue el modo rápido, dilo en el informe y ofrece el flujo completo como siguiente paso.
+
+## Modo rápido
+
+1. Localiza en el [sistema de diseño](references/design-system.md) los tokens y componentes que toca el cambio. Esa lista sustituye al inventario del paso 2.
+2. Aplica con ellos el [paso 5](#5-construir-desde-el-sistema), que incluye el mínimo de calidad, los contratos invisibles, el aspecto de las demás pantallas y las comprobaciones. Si falta un token, una variante o un componente, añádelo al sistema, o pídeselo a su propietario si no eres tú, y nómbralo en el informe.
+3. Captura la pantalla cambiada con las herramientas de [evidencia visual](../../references/visual-evidence.md#screenshots), mírala y muéstrala en la sesión. Si el cambio altera el reparto de la pantalla, captura a 375 y a 1440 px. Una app en webview usa los tamaños de su ventana, como indica el [paso 6](#6-criticar) también para el mínimo de calidad, y una pantalla nativa sigue [sus capturas](references/native.md#capturas). Si el entorno no puede renderizar, el informe declara la captura pendiente.
+
+Termina cuando se cumple la condición del paso 5 y la captura está a la vista o declarada pendiente. Este modo no planifica, no critica con las señales ni pide puntuación. El informe dice qué cambió, qué tokens y componentes usó o añadió, el resultado de las comprobaciones y la captura. Al terminar ofrece a la persona el flujo completo por si lo quiere después; un hijo delegado deja esa oferta al padre.
+
+## Flujo completo
 
 ### 1. Encuadrar el brief
 
@@ -69,7 +86,7 @@ Termina cuando cada comprobación pasa o el informe nombra lo que falta.
 
 ### 7. Puntuar
 
-Cada cambio visual se puntúa, y este skill ya autoriza los revisores. Lanza un subagente de Claude Opus y uno de Codex con la rúbrica sobre 10 de [puntuación](references/scoring.md), que dice cómo llamarlos en cada host. Con todas las notas en 8 o más, un resultado de más de 8 es bueno y uno de más de 9, prácticamente perfecto; las notas altas se ganan con evidencia. Con un resultado de 8 o menos, o cualquier nota por debajo de 8, corrige los hallazgos y vuelve a puntuar, hasta tres rondas.
+Cada cambio visual del flujo completo se puntúa, y este skill ya autoriza los revisores. Lanza un subagente de Claude Opus y uno de Codex con la rúbrica sobre 10 de [puntuación](references/scoring.md), que dice cómo llamarlos en cada host. Con todas las notas en 8 o más, un resultado de más de 8 es bueno y uno de más de 9, prácticamente perfecto; las notas altas se ganan con evidencia. Con un resultado de 8 o menos, o cualquier nota por debajo de 8, corrige los hallazgos y vuelve a puntuar, hasta tres rondas.
 
 Termina cuando una ronda supera 8 con todas las notas en 8 o más, cuando se agotan las tres o cuando la corrección espera una decisión de la persona, con las notas en el informe. Un revisor solo queda fuera si su ruta no existe o falla, y el informe dice cuál y por qué.
 
@@ -79,4 +96,4 @@ Cuando alguien, también un revisor, señala un caso, busca en la pantalla cada 
 
 ## Informe
 
-Termina con la frase de encuadre, el modo del sistema, el plan con sus fuentes, lo que cambió la prueba de intercambio, los componentes añadidos o con variantes nuevas, cada cambio visible en pantallas existentes, el resultado de las comprobaciones, lo que retiraste o por qué conservaste el conjunto y la puntuación de cada ronda.
+El flujo completo termina con la frase de encuadre, el modo del sistema, el plan con sus fuentes, lo que cambió la prueba de intercambio, los componentes añadidos o con variantes nuevas, cada cambio visible en pantallas existentes, el resultado de las comprobaciones, lo que retiraste o por qué conservaste el conjunto y la puntuación de cada ronda.
