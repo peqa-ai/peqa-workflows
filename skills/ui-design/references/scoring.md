@@ -1,6 +1,6 @@
 # Puntuación con revisores
 
-Revisado el 2026-11-03. Después de la crítica, dos revisores independientes puntúan la interfaz con la misma rúbrica: un subagente de Claude Opus y uno de Codex. Cargar `ui-design` autoriza a lanzarlos en cada cambio visual; su coste forma parte del encargo. Las notas son de los revisores: el autor decide qué hallazgos acepta e informa las notas tal como llegaron. Esta puntuación es aparte de [revisa](../../revisa/SKILL.md): no consume sus CR ni sustituye la revisión del código.
+Revisado el 2026-11-03. Después de la crítica, dos revisores independientes puntúan la interfaz con la misma rúbrica: un subagente de Claude Opus y uno de Codex. Cargar `ui-design` autoriza a lanzarlos en cada cambio visual del flujo completo; su coste forma parte del encargo. El [modo rápido](../SKILL.md#modo-rápido) no puntúa. Las notas son de los revisores: el autor decide qué hallazgos acepta e informa las notas tal como llegaron. Esta puntuación es aparte de [revisa](../../revisa/SKILL.md): no consume sus CR ni sustituye la revisión del código.
 
 ## Revisores
 

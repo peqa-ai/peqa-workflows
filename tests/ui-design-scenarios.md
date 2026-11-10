@@ -37,6 +37,12 @@ Repositorio sintético de las muestras con código: Ledgerline, una web React + 
 | Expansión y visibilidad | Simulación: el cuarto acceso registra una impresión al montar; CSS colapsa bajo `48rem` y JS decide visibilidad con `768px`; navegador a 20 px y viewport de 850 px, con borrador y cambio de cuenta | Reconoce la discrepancia entre consultas; misma unidad y valor; la opción oculta no registra impresión; preserva alcance y deduplicación, borrador, cuota y foco; control accesible y controles ocultos fuera del recorrido |
 | Cero, vacío y error parcial | Simulación: valor actual cero con historial y previsión; otro bloque sin datos ni referencias; un tercero falla mientras la página sigue operativa | Conserva el gráfico con contexto útil; vacío con primera acción y sin leyenda huérfana para el segundo; error y reintento específicos para el tercero |
 | Columnas desiguales | Simulación: dos columnas con bloques de 280 y 480 px alineados por filas, sin comparaciones entre filas; un compositor guarda el borrador en estado local | Considera pilas independientes; conserva orden DOM, lectura y teclado en ambos tamaños, borrador y foco al cambiar de ancho |
+| Elegir el flujo en `dirige` | Simulación en un host con preguntas: ajustar el espaciado de la cabecera de facturación, que se ve apretada en el móvil | Carga `ui-design` y pregunta entre flujo completo y cambio rápido, con una recomendación, en la misma ronda que sus otras dudas y antes de los pasos 1 a 4 |
+| `dirige` con modo rápido | Simulación: la persona responde «rápido» al caso anterior | Sin pasos 1 a 4 ni puntuación; el brief del hijo indica el modo rápido y nombra al propietario del sistema; evidencia visual y `revisa` siguen |
+| Pedido que ya elige | Simulación: `dirige` recibe «añade /pricing con tres planes; hazlo rápido» | No pregunta; aplica el modo rápido |
+| Invocación por nombre | Simulación: `/peqa-workflows:ui-design` con una página de precios; variante con «hazlo rápido» en el pedido | Flujo completo sin preguntar; con «hazlo rápido», modo rápido |
+| Sin preguntas | Simulación: sesión no interactiva; `ui-design` se activa por descripción con un botón primario más compacto | Modo rápido declarado en el informe, que ofrece el flujo completo |
+| Hijo en modo rápido | Simulación: encargo delegado que indica el modo rápido y un propietario del sistema que no es el hijo | No pregunta; construye con el sistema, comprueba y captura; pide al padre lo que toca el sistema ajeno |
 | Captura durante entrada | Simulación: datos recibidos y red inactiva a los 100 ms; barras con entrada de 500 ms y fuente que termina a los 250 ms; la captura inicial parece incompleta | Espera fuentes y estado visible final de las animaciones finitas; etiqueta por separado la transición; no usa tests aprobados ni una espera fija como prueba visual |
 
 ## Control previo
@@ -219,7 +225,38 @@ Validación estática: 165 tests del repositorio aprobados; `quick_validate.py` 
 
 Límites: una aplicación por caso y una repetición del conjunto pequeño; son simulaciones de decisiones, no pruebas de una UI implementada, estabilidad estadística ni una nueva puntuación visual.
 
+## Flujo completo o modo rápido, observado el 10 de noviembre de 2026
+
+Versión 0.19.0. Origen: en una sesión real, alguien pidió un cambio pequeño de interfaz y `dirige` dedicó media hora al flujo completo de `ui-design`. Ahora `ui-design` pregunta entre flujo completo y modo rápido, y `dirige` reutiliza esa pregunta. Todo fueron simulaciones de decisiones con agentes de contexto fresco que leyeron los `SKILL.md` del checkout. Ninguna editó, renderizó ni puntuó.
+
+Primera tanda: dos agentes, con prompts que describían el pedido y el entorno sin nombrar la pregunta.
+
+- **Elegir el flujo en `dirige`.** Cargó `ui-design` y preguntó en la ronda 1/3 de `idea`, recomendando el modo rápido. Mientras esperaba, leyó la cabecera y capturó el estado anterior.
+- **`dirige` con modo rápido.** Omitió los pasos 1 a 4 y la puntuación. El brief del hijo indicaba el modo rápido y el propietario del sistema. Mantuvo la evidencia visual y `revisa`.
+- **Pedido que ya elige.** Con «hazlo rápido» no preguntó por el flujo; solo preguntó por el contenido de los planes.
+- **`dirige` sin rediseño.** No cargó `ui-design` ni preguntó.
+- **Rediseño con flujo completo.** Siguió los pasos 1 a 4 en el padre y los hijos desde el paso 5, y el padre puntuó.
+- **Invocación por nombre.** Siguió el flujo completo sin preguntar por el flujo.
+- **Sin preguntas.** En `claude -p` aplicó el modo rápido, lo dijo en el informe y ofreció el completo.
+- **Hijo en modo rápido.** No preguntó y pidió `Switch` al padre.
+
+Fallos de redacción detectados y corregidos:
+
+- `scoring.md` y el paso 7 seguían diciendo que se puntúa «cada cambio visual».
+- El modo rápido decía «añádelo al sistema» sin la excepción del propietario.
+- No estaba claro si el modo rápido conserva el aspecto de las demás pantallas y el comentario de fuente de los tokens; ahora aplica el paso 5 entero.
+- «Si el host no admite preguntas» chocaba con preguntar en la conversación cuando falta la herramienta; en `claude -p` nadie responde. Ahora dice «si nadie puede responder durante la sesión».
+- Pedir «lo que tarda» cada opción llevaba a inventar duraciones; ahora se describe lo que incluye.
+- No estaba fijada la precedencia en `/peqa-workflows:ui-design … hazlo rápido`; ahora manda el pedido.
+- Un hijo delegado ofrecía el flujo completo; ahora deja esa oferta al padre.
+
+Segunda tanda: un agente nuevo repitió los casos corregidos. Con «hazlo rápido» y el skill invocado por nombre aplicó el modo rápido. En `claude -p` siguió el modo rápido. El hijo pidió al padre `Switch` y un token de espacio. En `dirige`, el modo rápido no puntuó y el informe final ofreció el flujo completo. Quedaron dos dudas, aclaradas sin otra simulación: el nombre en una sesión no interactiva lleva al flujo completo, porque no toca preguntar; y la pregunta del flujo consume una ronda de `idea` aunque sea la única.
+
+Los casos de sesión real anteriores con `claude -p` que esperan puntuación, como la puntuación en sesión real y el rediseño con rondas, ahora necesitan invocar `ui-design` por su nombre o decir en la petición que se quiere el flujo completo.
+
 ## Pendiente
+
+- El modo rápido y la pregunta del flujo no se probaron en una sesión real, ni en T3, Orca o Codex.
 
 - La puntuación no se probó en T3 ni con un padre Codex: solo en Claude Code sin T3 y con los dos CLIs ejecutados directamente. Tampoco se probó con el padre de `dirige` puntuando un cambio integrado.
 - La escala exigente tiene dos muestras: una recalificación por CLI y una sesión completa. La regla del idioma no se probó.

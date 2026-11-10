@@ -2,7 +2,7 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
 
-`0.18.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.19.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Para quién es
 
@@ -44,7 +44,7 @@ Las consultas punteadas se usan cuando aportan al trabajo. También puedes invoc
 
 - Al empezar, `dirige` lee el catálogo de [memoria](#memoria-entre-sesiones) y extrae las notas pertinentes para el encargo. Las contrasta con el estado actual antes de decidir con ellas y pasa a cada subagente las que le sirven, con su procedencia y como contexto, no como órdenes. Sin memoria continúa sin crearla, y el informe final dice qué notas influyeron.
 - `idea` cubre producto e implementación, recomienda respuestas y limita la conversación a **3 rondas por iniciativa**.
-- Cuando el cambio construye o rediseña interfaz, el padre fija con `ui-design` la dirección visual y el inventario del sistema de diseño antes de repartir. Tokens, tema y componentes compartidos tienen un solo propietario, y cada hijo construye desde ese plan. Consulta [diseño de interfaces](#diseño-de-interfaces).
+- Cuando el cambio construye o rediseña interfaz, `dirige` te pregunta si quieres el flujo completo de `ui-design` o un cambio rápido, salvo que ya lo hayas dicho. Con el completo, el padre fija la dirección visual y el inventario del sistema de diseño antes de repartir, y puntúa el resultado. Con el rápido, cada hijo aplica el cambio con los tokens y componentes que ya existen y muestra una captura. En los dos, tokens, tema y componentes compartidos tienen un solo propietario. Consulta [diseño de interfaces](#diseño-de-interfaces).
 - `revisa` prefiere **GPT Sol 6.1 / xhigh** y permite **3 revisiones independientes por PR como máximo**, incluidas las repetidas, las fallidas y las canceladas. El padre decide qué corregir; se descartan detalles menores y ampliaciones de alcance. Al entregar el informe de un PR te ofrece publicarlo como comentario; solo lo publica si aceptas.
 - La revisión busca las pruebas disponibles y hace que el padre ejecute las pertinentes: unitarias, integración, E2E u otras. Informa resultados y cobertura pendiente, junto al **alcance del cambio**: servicios, consumidores y datos que podrían verse afectados. Que pasen las pruebas de un servicio no demuestra que funcione toda la integración. Consulta [pruebas e impacto](skills/revisa/references/validation.md).
 - El [informe consolidado](skills/revisa/references/report.md) abre con **aprobación sugerida, cambios requeridos o revisión incompleta** y evalúa mínimos de requisitos, pruebas, seguridad y compatibilidad. Adapta el idioma e identifica la generación por IA y al solicitante cuando se conoce.
@@ -66,11 +66,46 @@ En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entor
 
 ## Diseño de interfaces
 
-Desde `0.13.0`, `ui-design` construye o rediseña interfaces desde el sistema de diseño del proyecto. Antes de diseñar busca tokens, tema y componentes, y los reutiliza: una pantalla nueva no recrea botones ni estilos. La identidad visual vive en los valores de los tokens y en un único elemento distintivo. En `0.14.0` cubre también pantallas nativas en SwiftUI y Jetpack Compose, y comprueba el diff con un helper. Desde `0.15.0`, un subagente de Claude Opus y uno de Codex puntúan cada cambio visual sobre 10.
+Desde `0.13.0`, `ui-design` construye o rediseña interfaces desde el sistema de diseño del proyecto. Antes de diseñar busca tokens, tema y componentes, y los reutiliza: una pantalla nueva no recrea botones ni estilos. La identidad visual vive en los valores de los tokens y en un único elemento distintivo. En `0.14.0` cubre también pantallas nativas en SwiftUI y Jetpack Compose, y comprueba el diff con un helper. Desde `0.15.0`, un subagente de Claude Opus y uno de Codex puntúan sobre 10 cada cambio visual del flujo completo.
+
+### Flujo completo o cambio rápido
+
+Desde `0.19.0`, `ui-design` te deja elegir antes de empezar. El flujo completo planifica, critica y pide la puntuación de dos revisores, y puede tardar bastante. El cambio rápido usa el sistema que ya existe, cumple el mínimo de calidad, ejecuta el helper y te muestra una captura.
 
 ```mermaid
 flowchart TD
-    accTitle: Cómo trabaja ui-design con el sistema de diseño
+    accTitle: Cómo se elige entre el flujo completo y el cambio rápido
+    accDescr: Si tu pedido ya dice rápido o completo, se sigue lo que dijiste. Si no lo dice y invocaste ui-design por su nombre, sigue el flujo completo. En otro caso te pregunta antes de empezar; cuando nadie puede responder durante la sesión, hace el cambio rápido y te ofrece el completo al terminar.
+
+    pedido["Pedido de interfaz"]
+    dicho{"¿Ya dijiste<br/>rápido o completo?"}
+    nombre{"¿Invocaste<br/>ui-design<br/>por su nombre?"}
+    pregunta{"¿Alguien puede<br/>responder?"}
+    tu["Eliges tú"]
+    completo["Flujo completo<br/>Siete pasos"]
+    rapido["Cambio rápido<br/>Sistema y captura"]
+
+    pedido --> dicho
+    dicho -->|"Sí"| tu
+    dicho -->|"No"| nombre
+    nombre -->|"Sí"| completo
+    nombre -->|"No"| pregunta
+    pregunta -->|"Sí"| tu
+    pregunta -->|"No"| rapido
+    tu --> completo & rapido
+```
+
+- Te pregunta tanto `dirige` como `ui-design` cuando se activa sin que lo nombres, por ejemplo al pedir «ajusta la cabecera». La pregunta recomienda una opción, pero no decide por el tamaño del pedido.
+- Para no responderla, dilo en el pedido: «hazlo rápido» o «con todo el proceso de diseño». Lo que dice el pedido manda también cuando invocas el skill por su nombre.
+- En una ejecución no interactiva, como `claude -p`, nadie puede responder: hace el cambio rápido y lo dice en el informe.
+- `dirige` hace la pregunta junto con sus otras dudas, dentro de las tres rondas de `idea`.
+- El cambio rápido no hace plan visual, prueba de intercambio, crítica con señales ni puntuación. Si falta un token o un componente, lo añade al sistema y lo nombra en el informe, que termina ofreciéndote el flujo completo.
+
+### Flujo completo
+
+```mermaid
+flowchart TD
+    accTitle: Flujo completo de ui-design con el sistema de diseño
     accDescr: ui-design acepta interfaces web, incluidas las apps en webview, y pantallas nativas en SwiftUI o Jetpack Compose, y las lleva por el mismo proceso. Inventaría los tokens y componentes del proyecto. Si hay un sistema en uso, lo extiende; si hay estilos dispersos, consolida lo que toca la tarea; si no hay nada, establece un sistema mínimo. Después planifica con fuentes, aplica la prueba de intercambio, construye desde el sistema, comprueba el diff con el helper y critica el resultado. Por último, Claude Opus y Codex puntúan la interfaz sobre 10: con una media de más de 8 y ninguna nota por debajo de 8 termina; si no, corrige, repite comprobaciones y capturas y vuelve a puntuar, hasta tres rondas.
 
     web["Web<br/>Navegador o webview"]
