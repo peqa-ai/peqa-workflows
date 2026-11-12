@@ -46,6 +46,43 @@ Tercera ronda, un agente nuevo sobre G1:
 
 Dos aclaraciones posteriores no se volvieron a simular: los secretos se reconocen por el nombre de sus archivos sin abrirlos, y las reglas también se leen en los tres archivos de ajustes.
 
-## Qué no cubren estas muestras
+## Comparación en papel contra `main`
 
-Son simulaciones en papel. Ninguna sesión real ejecutó `dirige` con estos cambios, y no se probó en T3 ni en Orca. Los contratos de Claude Code se contrastaron con su documentación y con el CLI 2.1.322; los de Codex, con `codex --help` 0.167.1.
+El 12 de noviembre de 2026, ocho agentes con contexto fresco recibieron el mismo prompt, la mitad con los archivos de `main` y la mitad con los de este cambio, en carpetas de nombre neutro. En papel, `main` ya pedía a los hijos la salida de sus comandos y ya decía que el repositorio no tenía CI, así que dos de las frases nuevas parecían no cambiar nada. Las sesiones reales de abajo lo desmintieron.
+
+## Sesiones reales medidas
+
+Treinta sesiones de `claude -p` en modo automático ejecutaron `dirige` de principio a fin sobre un repositorio de ejemplo: una funcionalidad pequeña en Python, con un `.env` local, sin CI y con `main` sin protección. Un sustituto local de `gh` registró cada llamada y respondió con ese estado; el remoto era un repositorio en disco. Seis pruebas de aceptación que el agente no veía midieron la implementación. Costos a precio de lista, según los reporta cada sesión. El prompt excluía la revisión independiente.
+
+| Modelo | Versión | n | Costo USD | Tokens (miles) | Minutos | Pruebas ocultas 6/6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Opus 5.5 | `main` 0.19.0 | 6 | 0,44 ± 0,05 | 395 | 1,4 | 6/6 |
+| Opus 5.5 | 0.20.0 antes de la corrección | 6 | 0,46 ± 0,04 | 412 | 1,5 | 6/6 |
+| Fable 5.2 | `main` 0.19.0 | 6 | 0,95 ± 0,11 | 386 | 1,5 | 6/6 |
+| Fable 5.2 | 0.20.0 antes de la corrección | 6 | 1,14 ± 0,13 | 489 | 1,9 | 6/6 |
+| Fable 5.2 | 0.20.0 corregida | 6 | 1,14 ± 0,13 | 497 | 1,9 | 6/6 |
+
+| Conducta | Opus `main` | Opus 0.20.0 | Fable `main` | Fable 0.20.0 | Fable corregida |
+| --- | --- | --- | --- | --- | --- |
+| Consultó protección de `main` y checks del PR | 0/6 | 5/6 | 0/6 | 6/6 | 6/6 |
+| El informe dice que ningún check corrió | 0/6 | 5/6 | 0/6 | 6/6 | 6/6 |
+| El encargo al hijo pide comando y salida | 2/6 | 5/6 | 6/6 | 6/6 | 6/6 |
+| El usuario ve el ajuste propuesto para `.env` | 0/6 | 6/6 | 0/6 | 0/6 | 5/6 |
+| Abrió `.env` | 0/6 | 0/6 | 0/6 | 0/6 | 0/6 |
+
+Lo que mostraron:
+
+- **Costo:** en Opus 5.5 la diferencia queda dentro del ruido (+4 % en media, −4 % en mediana). En Fable 5.2 el cambio cuesta un 20 % más, unos 0,19 USD por sesión, con un 27 % más de tokens.
+- **Implementación:** sin diferencia. Las treinta pasaron las pruebas ocultas y ninguna abrió `.env`, lo subió a Git ni movió `main`.
+- **Fallo encontrado:** la regla pedía avisar al empezar y no repetir el ajuste en el informe. Fable 5.2 escribió ese aviso como nota de progreso sin el ajuste, y en 4 de 6 informes lo dio por «ya propuesto». El ajuste no llegó al usuario en ninguna.
+- **Corrección:** el informe final lleva cada garantía que falta con su ajuste completo. Con ella el ajuste llegó en 5 de 6 sesiones de Fable, al mismo costo. La sexta leyó los ajustes y vio el `.env`, pero omitió esa línea.
+
+Sin resolver:
+
+- La propuesta copia el bloque de ejemplo entero, con las reglas de force push que el encargo no necesitaba.
+- Una sesión de Opus no abrió PR porque notó que el remoto era una ruta local; es un defecto del banco de pruebas.
+- Opus 5.5 no se volvió a medir con la corrección.
+
+## Qué no cubren estas pruebas
+
+Una sola tarea, con un subagente, sin merge ni despliegue pedidos y sin revisión independiente. Ninguna sesión corrió en T3, en Orca ni con Codex, y `gh` era un sustituto. El banco de pruebas no está en el repositorio. Los contratos de Claude Code se contrastaron con su documentación y con el CLI 2.1.322; los de Codex, con `codex --help` 0.167.1.
