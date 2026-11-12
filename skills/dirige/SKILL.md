@@ -19,7 +19,7 @@ Antes de asignar o editar, ejecuta [descubrimiento y coordinación](references/c
 
 Antes de crear recursos, prepara el [registro y la política de limpieza](references/cleanup.md). El modo predeterminado es `automática`: al cerrar retira los recursos propios que hayan dejado de ser necesarios y superen la comprobación de seguridad. La opción `conservar` mantiene los recursos de esta ejecución. Son instrucciones del skill, no flags de un CLI ni un servicio en segundo plano; los permisos del host siguen aplicando.
 
-Al empezar y al preparar la entrega, comprueba las filas de [garantías del entorno](../../references/environment-guarantees.md) que cumpla el encargo: secretos en el checkout, merge, despliegue o publicación. Informa las que falten con el ajuste propuesto, sin aplicarlo, como indica esa referencia.
+Al empezar y al preparar la entrega, comprueba las filas de [garantías del entorno](../../references/environment-guarantees.md) que cumpla el encargo: secretos en el checkout, merge, despliegue o publicación. El informe final lleva cada una que falte con su ajuste propuesto completo, sin aplicarlo.
 
 Si hay servicios organizados como Git submodules o el checkout pertenece a un padre, lee [trabajo desde el repositorio padre](../../references/submodules.md). Recomienda abrir la raíz del conjunto, identifica hijos y dependencias antes de dividir el trabajo y respeta el alcance elegido por el usuario.
 
@@ -37,4 +37,4 @@ Todo cambio de archivos termina en un PR contra la rama principal. El encargo de
 
 Sugiere workflows o swarms cuando una ejecución larga, repetible o con muchas ramas independientes justifique su configuración. Explica el beneficio concreto y su costo. Usa esos mecanismos solo si el usuario los elige; la ruta normal sigue siendo subagentes. Crea hilos de nivel superior únicamente cuando el usuario pida nuevos hilos.
 
-Al terminar informa qué se entregó, evidencia observada, resultado de revisión, URL y head del PR o el motivo por el que no hay PR, las garantías del entorno que faltaron y cualquier pendiente material. Incluye el modo de limpieza, recursos eliminados y conservados con su motivo, ubicación del registro y espacio libre observado cuando se haya medido. Evita narrar cada interacción entre agentes.
+Al terminar informa qué se entregó, evidencia observada, resultado de revisión, URL y head del PR o el motivo por el que no hay PR, las garantías del entorno que faltan con su ajuste propuesto y cualquier pendiente material. Incluye el modo de limpieza, recursos eliminados y conservados con su motivo, ubicación del registro y espacio libre observado cuando se haya medido. Evita narrar cada interacción entre agentes.

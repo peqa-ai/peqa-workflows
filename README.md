@@ -246,7 +246,7 @@ El [registro de uso](references/usage.md) se activa por repositorio y cuenta inv
 
 ## Trabajar sin aprobar cada paso
 
-Desde `0.20.0`, `dirige` separa lo que puede dejar a las instrucciones de lo que necesita una garantía. Un skill pide una conducta; no puede garantizarla. Si pides un merge, un despliegue o una publicación, o si el checkout guarda secretos, comprueba al empezar, en modo lectura, qué sostiene el entorno, y te propone el ajuste que falte sin aplicarlo. Antes de preguntarte por un merge comprueba la protección de la rama y los checks del PR.
+Desde `0.20.0`, `dirige` separa lo que puede dejar a las instrucciones de lo que necesita una garantía. Un skill pide una conducta; no puede garantizarla. Si pides un merge, un despliegue o una publicación, o si el checkout guarda secretos, comprueba al empezar, en modo lectura, qué sostiene el entorno. El informe final trae el ajuste que falte, sin aplicarlo. Antes de preguntarte por un merge comprueba la protección de la rama y los checks del PR.
 
 ```mermaid
 flowchart TD
@@ -263,7 +263,7 @@ flowchart TD
 - **En el cliente:** reglas que niegan o piden confirmación, y el sandbox de los comandos. En Claude Code van en `.claude/settings.json`; en Codex, en las opciones de sandbox y aprobación.
 - **En la entrega:** cada criterio de aceptación se liga a una comprobación que pasa o falla, y cada hijo devuelve el comando y su salida. Si ningún check corre en el PR, el informe lo dice.
 
-Ejemplo: «dirige esta migración y mézclala cuando pasen los checks». Si `main` no exige checks, `dirige` te lo avisa antes de empezar con la protección propuesta; el trabajo sigue y el merge espera tu respuesta. Consulta [qué comprueba y qué propone en cada cliente](references/environment-guarantees.md).
+Ejemplo: «dirige esta migración y mézclala cuando pasen los checks». Si `main` no exige checks, `dirige` te lo dice antes de mezclar y deja la protección propuesta en el informe final; no añade una pregunta, porque pedir el merge ya lo autoriza. Consulta [qué comprueba y qué propone en cada cliente](references/environment-guarantees.md).
 
 ## Instalar
 

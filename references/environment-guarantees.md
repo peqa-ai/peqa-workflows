@@ -59,7 +59,7 @@ Los hijos heredan las reglas del cliente que ejecuta a cada uno. Un worker de Or
 
 ## Informar y proponer
 
-Menciona solo las garantías que faltan en las filas que aplican, con una línea por cada una: qué falta y el ajuste propuesto como texto revisable. Las que se comprueban al empezar se informan entonces, en un mensaje que no pregunta nada. Las que se comprueban al preparar la entrega van dentro del informe final. Propón cada ajuste una vez por iniciativa: el informe final nombra las ya propuestas sin repetir el ajuste. Con todo en su lugar basta una línea en ese informe.
+El informe final lleva una línea por cada garantía que falta en las filas que aplican: qué falta y el ajuste propuesto completo, como texto revisable. Escríbelo ahí aunque ya lo hayas mencionado: una nota de progreso puede no llegar al usuario. Si el encargo pide merge, despliegue o publicación y falta su garantía, dilo también antes de ejecutar esa acción. Con todo en su lugar basta una línea en ese informe.
 
 La falta de una garantía no detiene el trabajo reversible ni añade una pregunta. Pedir la acción en el encargo es la autorización expresa: ejecútala cuando se cumplan sus condiciones y deja dicho en el informe qué la sostenía y qué no.
 
