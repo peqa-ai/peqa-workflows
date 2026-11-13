@@ -2,7 +2,7 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
 
-`0.19.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.20.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Para quién es
 
@@ -244,6 +244,27 @@ flowchart TD
 
 El [registro de uso](references/usage.md) se activa por repositorio y cuenta invocaciones observadas por skill y entorno de ejecución. No guarda conversaciones, código, cuentas ni rutas, y no reconstruye el uso anterior a su activación.
 
+## Trabajar sin aprobar cada paso
+
+Desde `0.20.0`, `dirige` separa lo que puede dejar a las instrucciones de lo que necesita una garantía. Un skill pide una conducta; no puede garantizarla. Si pides un merge, un despliegue o una publicación, o si el checkout guarda secretos, comprueba al empezar, en modo lectura, qué sostiene el entorno. El informe final trae el ajuste que falte, sin aplicarlo. Antes de preguntarte por un merge comprueba la protección de la rama y los checks del PR.
+
+```mermaid
+flowchart TD
+    accTitle: Qué acciones necesitan una garantía fuera del prompt
+    accDescr: Para cada acción del encargo, dirige pregunta si puede deshacerse en caso de salir mal. Si puede deshacerse, bastan las instrucciones, las pruebas y la revisión. Si no puede deshacerse, comprueba si el servidor, el cliente o el entorno la garantizan. Si la garantía existe, continúa. Si falta, informa y propone el ajuste, y la acción espera tu aprobación.
+    accion["Acción del encargo"] --> pregunta{"Si sale mal una vez,<br/>¿se puede deshacer?"}
+    pregunta -- "Sí" --> instrucciones["Instrucciones,<br/>pruebas y revisión"]
+    pregunta -- "No" --> garantia{"¿La sostiene<br/>el entorno?"}
+    garantia -- "Sí" --> continua["Continúa"]
+    garantia -- "No" --> propone["Informa, propone el ajuste<br/>y espera tu aprobación"]
+```
+
+- **En el servidor:** protección de la rama principal y checks requeridos sobre un CI que corre en cada PR. Valen para cualquier cliente.
+- **En el cliente:** reglas que niegan o piden confirmación, y el sandbox de los comandos. En Claude Code van en `.claude/settings.json`; en Codex, en las opciones de sandbox y aprobación.
+- **En la entrega:** cada criterio de aceptación se liga a una comprobación que pasa o falla, y cada hijo devuelve el comando y su salida. Si ningún check corre en el PR, el informe lo dice.
+
+Ejemplo: «dirige esta migración y mézclala cuando pasen los checks». Si `main` no exige checks, `dirige` te lo dice antes de mezclar y deja la protección propuesta en el informe final; no añade una pregunta, porque pedir el merge ya lo autoriza. Consulta [qué comprueba y qué propone en cada cliente](references/environment-guarantees.md).
+
 ## Instalar
 
 Instala el plugin completo: sus skills comparten referencias y scripts. Una instalación sirve para distintos proyectos.
@@ -298,7 +319,7 @@ Desde la raíz del plugin:
 python3 -m unittest discover -s tests -v
 ```
 
-Las pruebas usan repositorios temporales y datos sintéticos.
+Las pruebas usan repositorios temporales y datos sintéticos. También comprueban el paquete: que los tres manifiestos coincidan, que cada skill se llame como su carpeta y que los enlaces relativos de la documentación existan. [El CI](.github/workflows/ci.yml) ejecuta la misma suite en cada PR, en Linux y macOS.
 
 ## Licencia
 

@@ -195,6 +195,26 @@ _TOKENS_LAYER = re.compile(r'@layer\s+tokens(?:\.[\w-]+)*')
 _HUNK = re.compile(rb'@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@')
 _BINARY = re.compile(rb'Binary files (.+) and (.+) differ\Z')
 _ONLY_IN = re.compile(rb'Only in (.+): (.+)\Z')
+
+
+def _unquote_only_in(raw):
+    """Undo the shell quoting recent GNU diff adds to `Only in` names with spaces."""
+    if len(raw) < 2 or not (raw.startswith(b"'") and raw.endswith(b"'")):
+        return raw
+    plain, index = bytearray(), 0
+    while index < len(raw):
+        if raw[index:index + 2] == b"\\'":
+            plain += b"'"
+            index += 2
+            continue
+        end = raw.find(b"'", index + 1) if raw[index:index + 1] == b"'" else -1
+        if end < 0:
+            return raw
+        plain += raw[index + 1:end]
+        index = end + 1
+    return bytes(plain)
+
+
 # Contract values are bounded (1024 characters, braces nested one level, eight
 # inner groups) so matching stays linear in the length of a run of lines.
 _ATTRIBUTE = re.compile(r'''(?<![\w.$-])(id|name|for|htmlFor|autocomplete|autoComplete|href|data-[A-Za-z0-9_-]{1,64})'''
@@ -654,7 +674,8 @@ def _parse_patch(data, code):
                     current.plus = None if binary.group(2) == b'/dev/null' else binary.group(2)
                 else:
                     current.only_in = True
-                    current.plus = only.group(1).rstrip(b'/') + b'/' + only.group(2)
+                    current.plus = (_unquote_only_in(only.group(1)).rstrip(b'/') + b'/'
+                                    + _unquote_only_in(only.group(2)))
             elif current is not None and current.header is not None and not current.has_paths and not current.hunks:
                 _extended_header(current, line.rstrip(b'\r'))
     except ValueError as exc:

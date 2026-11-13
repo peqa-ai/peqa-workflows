@@ -416,6 +416,15 @@ class DiffModeTests(Fixture):
         rc, data = self.cli('literals', '--diff', str(diff), '--root', str(new))
         self.assertIn({'path': 'src/new file.tsx', 'reason': 'only_in_one_tree'}, data['skipped'])
 
+    def test_only_in_names_quoted_by_gnu_diff_are_listed_unquoted(self):
+        orig, new = self.make_trees()
+        lines = [b"Only in new/src: 'new file.tsx'", b"Only in 'new/my dir': 'it'\\''s.tsx'",
+                 b"Only in new/src: plain.tsx", b"Only in new/src: 'unterminated"]
+        diff = self.write('quoted.diff', b'\n'.join(lines) + b'\n', base=self.root)
+        rc, data = self.cli('literals', '--diff', str(diff), '--root', str(new))
+        paths = {item['path'] for item in data['skipped'] if item['reason'] == 'only_in_one_tree'}
+        self.assertEqual(paths, {'src/new file.tsx', "my dir/it's.tsx", 'src/plain.tsx', "src/'unterminated"})
+
 
 class ContractsTests(Fixture):
     def test_removed_attributes_with_quotes_and_jsx_braces(self):
