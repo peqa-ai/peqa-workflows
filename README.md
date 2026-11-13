@@ -2,7 +2,7 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
 
-`0.20.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.21.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Para quién es
 
@@ -246,7 +246,7 @@ El [registro de uso](references/usage.md) se activa por repositorio y cuenta inv
 
 ## Trabajar sin aprobar cada paso
 
-Desde `0.20.0`, `dirige` separa lo que puede dejar a las instrucciones de lo que necesita una garantía. Un skill pide una conducta; no puede garantizarla. Si pides un merge, un despliegue o una publicación, o si el checkout guarda secretos, comprueba al empezar, en modo lectura, qué sostiene el entorno. El informe final trae el ajuste que falte, sin aplicarlo. Antes de preguntarte por un merge comprueba la protección de la rama y los checks del PR.
+Desde `0.20.0`, `dirige` separa lo que puede dejar a las instrucciones de lo que necesita una garantía. Un skill pide una conducta; no puede garantizarla. Si pides un merge, un despliegue o una publicación, o si el checkout guarda secretos, comprueba al empezar, en modo lectura, qué sostiene el entorno. El informe final trae el ajuste que falte, sin aplicarlo. Desde `0.21.0` esa comprobación la hace un script, `environment_guarantees.py`, que lista los archivos `.env*` por nombre sin abrirlos y devuelve solo el ajuste que falta. Antes de preguntarte por un merge comprueba la protección de la rama y los checks del PR.
 
 ```mermaid
 flowchart TD

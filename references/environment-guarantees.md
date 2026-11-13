@@ -11,16 +11,28 @@ Para cada acción del encargo pregunta: si sale mal una vez, ¿se puede deshacer
 
 ## Qué comprobar y cuándo
 
-Comprueba solo las filas cuya condición cumple el encargo, una vez por encargo y en el momento que indica cada una.
+El helper incluido hace las consultas en modo lectura y devuelve JSON. Resuelve `PEQA_PLUGIN` desde la instalación del plugin y `PEQA_REPO` como raíz del proyecto.
 
-| Aplica cuando | Momento | Garantía | Cómo comprobarla |
-| --- | --- | --- | --- |
-| El checkout guarda secretos, reconocibles por el nombre de archivos como `.env*` sin abrirlos, y la sesión ejecuta comandos que nadie aprueba uno a uno: modo automático, segundo plano o workers | Al empezar | Regla del cliente que niega su lectura y sandbox para los comandos, o un entorno desechable sin esos secretos | Ajustes del cliente, según su sección |
-| El encargo pide desplegar o publicar | Al empezar | Aprobación en la plataforma que despliega, o credenciales limitadas a ese destino | `gh api 'repos/{owner}/{repo}/environments'` lista los entornos y sus reglas. Un script local con credenciales locales no tiene más garantía que el usuario |
-| El encargo pide el merge | Al empezar | Protección de la rama principal con checks requeridos | `gh api 'repos/{owner}/{repo}/branches/<rama>/protection'` y `gh api 'repos/{owner}/{repo}/rules/branches/<rama>'`: un 404 y una lista vacía indican que nada la protege |
-| La entrega va a preguntar por el merge | Al preparar la entrega | La misma protección, y checks que corrieron en ese PR | Las dos consultas anteriores y `gh pr checks <URL>`; si no lista ninguno, ningún check corrió |
+```sh
+python3 "$PEQA_PLUGIN/scripts/environment_guarantees.py" check --repo "$PEQA_REPO"
+```
 
-Las garantías del servidor valen para cualquier cliente y sesión; por eso van primero. Lo que no puedas leer, decláralo sin comprobar.
+| Momento | Opción | Qué comprueba |
+| --- | --- | --- |
+| Al empezar | ninguna | Archivos `.env*` del checkout, por nombre y sin abrirlos, frente a las reglas `deny` y el sandbox de los ajustes de usuario, de proyecto y locales de Claude Code |
+| Al empezar, si el encargo pide el merge | `--merge` | Checks requeridos en la rama principal, por protección clásica o por ruleset |
+| Al empezar, si el encargo pide desplegar o publicar | `--deploy` | Entornos de despliegue con reglas de protección |
+| Al preparar la entrega | `--pr <URL>` | La rama principal y los checks que corrieron en ese PR |
+
+Con Codex añade `--runtime codex`. Cada elemento de `checks` trae un `status`:
+
+- `missing`: la garantía falta. Trae una `proposal` que nombra solo lo que falta.
+- `not_verified`: no se pudo leer, por ejemplo sin `gh`, sin remoto en GitHub o sin permiso. Decláralo sin comprobar; no lo presentes como ausente.
+- `ok` y `not_applicable`: nada que proponer.
+
+La fila de secretos importa cuando la sesión ejecuta comandos que nadie aprueba uno a uno: modo automático, segundo plano o workers. Un despliegue por script local con credenciales locales no tiene más garantía que el usuario, aunque el repositorio defina entornos.
+
+Sin Python, haz las consultas a mano: `gh api 'repos/{owner}/{repo}/branches/<rama>'` (campo `protection`), `gh api 'repos/{owner}/{repo}/rules/branches/<rama>'`, `gh pr view <URL> --json statusCheckRollup` y `gh api 'repos/{owner}/{repo}/environments'`. La ruta `branches/<rama>/protection` responde 404 a quien no administra el repositorio aunque la rama esté protegida; no la uses para concluir que falta.
 
 ## Checks en cada PR
 
@@ -32,22 +44,10 @@ Cada sesión decide qué comprueba. El CI aplica las mismas comprobaciones a tod
 - **Límite de las reglas de Bash.** Comparan el texto del comando: `Bash(git push *)` detiene `git push origin main` y deja pasar `git -C . push origin main`. El push a la rama principal se garantiza en el servidor; la regla es una segunda capa. El modo automático permite por defecto el push a cualquier rama del repositorio, incluida la principal, y bloquea el force push.
 - **Archivos.** `Read(./.env)` cubre las herramientas de archivo y los comandos que el cliente reconoce, como `cat`. Un script que abre el archivo por su cuenta queda fuera salvo con el sandbox activo, que aplica esas rutas en el sistema operativo a cada comando y a sus procesos hijos.
 - **Sandbox.** `sandbox.enabled` limita archivos y red de los comandos de shell. Las herramientas de archivo, los servidores MCP y los hooks corren fuera de él.
-- **Dónde leerlos.** Reglas y sandbox pueden venir de los ajustes de usuario, del proyecto o locales: lee los tres antes de darlos por ausentes.
+- **Dónde viven.** Reglas y sandbox pueden venir de los ajustes de usuario, del proyecto o locales; el helper lee los tres. Los ajustes gestionados por la organización y los de línea de comandos quedan fuera de su lectura.
 - **Hooks para lo que debe correr siempre.** Un hook de `Stop`, `SubagentStop` o `TaskCompleted` que termina con código 2 devuelve el trabajo a Claude con su stderr. Con código 1 la acción continúa: un runner de pruebas que falla con 1 necesita un envoltorio que salga con 2. En `PostToolUse` el código 2 muestra el stderr sin deshacer la edición. Los hooks de este plugin siguen [su propia referencia](checks-and-hooks.md).
 - **Confianza del modo automático.** Los repositorios, dominios y buckets de confianza se describen en `autoMode`, que el cliente lee de los ajustes de usuario y no de los del proyecto. `claude auto-mode config` muestra la configuración efectiva.
 - **Sesión en la nube.** Corre sobre un clon nuevo, sin los ajustes ni los secretos de la máquina. Con un solo repositorio lee su `.claude/settings.json`; en los hilos de un proyecto no. Antes de recomendarla para un encargo, comprueba que este plugin carga en ese entorno.
-
-Propuesta para el `.claude/settings.json` del proyecto, que el usuario ajusta a sus rutas y a su flujo:
-
-```json
-{
-  "permissions": {
-    "deny": ["Read(./.env)", "Read(./.env.*)", "Bash(git push --force *)", "Bash(git push -f *)"],
-    "ask": ["Bash(gh pr merge *)"]
-  },
-  "sandbox": {"enabled": true}
-}
-```
 
 ## En Codex
 
@@ -59,10 +59,10 @@ Los hijos heredan las reglas del cliente que ejecuta a cada uno. Un worker de Or
 
 ## Informar y proponer
 
-El informe final lleva una línea por cada garantía que falta en las filas que aplican: qué falta y el ajuste propuesto completo, como texto revisable. Escríbelo ahí aunque ya lo hayas mencionado: una nota de progreso puede no llegar al usuario. Si el encargo pide merge, despliegue o publicación y falta su garantía, dilo también antes de ejecutar esa acción. Con todo en su lugar basta una línea en ese informe.
+El informe final lleva una línea por cada elemento de `missing`: qué falta y su `proposal` completa, como texto revisable. Escríbelo ahí aunque ya lo hayas mencionado: una nota de progreso puede no llegar al usuario. Si el encargo pide merge, despliegue o publicación y falta su garantía, dilo también antes de ejecutar esa acción. Con todo en su lugar basta una línea en ese informe.
 
 La falta de una garantía no detiene el trabajo reversible ni añade una pregunta. Pedir la acción en el encargo es la autorización expresa: ejecútala cuando se cumplan sus condiciones y deja dicho en el informe qué la sostenía y qué no.
 
 ## Fuentes
 
-Consultadas el 2026-11-12 en la documentación de Claude Code: [permisos](https://code.claude.com/docs/en/permissions), [modos de permiso](https://code.claude.com/docs/en/permission-modes), [sandbox](https://code.claude.com/docs/en/sandboxing), [hooks](https://code.claude.com/docs/en/hooks) y [ajustes](https://code.claude.com/docs/en/settings#settings-in-cloud-sessions). Las reglas por defecto del modo automático se contrastaron con `claude auto-mode defaults` en la versión 2.1.322, y las opciones de Codex con `codex --help` en la versión 0.167.1. El criterio de reversibilidad y el papel del CI vienen de la charla [«Rethinking Claude Code Best Practices»](https://youtu.be/vlfCjWuv4es) de Lydia Hallie, de Anthropic. Comprueba la instalación efectiva antes de proponer un ajuste.
+Consultadas el 2026-11-12 en la documentación de Claude Code: [permisos](https://code.claude.com/docs/en/permissions), [modos de permiso](https://code.claude.com/docs/en/permission-modes), [sandbox](https://code.claude.com/docs/en/sandboxing), [hooks](https://code.claude.com/docs/en/hooks) y [ajustes](https://code.claude.com/docs/en/settings#settings-in-cloud-sessions). Las reglas por defecto del modo automático se contrastaron con `claude auto-mode defaults` en la versión 2.1.322, y las opciones de Codex con `codex --help` en la versión 0.167.1. Las respuestas de GitHub que lee el helper se contrastaron el 2026-11-13 con `gh` 2.102.0. El criterio de reversibilidad y el papel del CI vienen de la charla [«Rethinking Claude Code Best Practices»](https://youtu.be/vlfCjWuv4es) de Lydia Hallie, de Anthropic. Comprueba la instalación efectiva antes de proponer un ajuste.
