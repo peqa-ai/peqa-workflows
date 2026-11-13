@@ -83,6 +83,24 @@ Sin resolver:
 - Una sesión de Opus no abrió PR porque notó que el remoto era una ruta local; es un defecto del banco de pruebas.
 - Opus 5.5 no se volvió a medir con la corrección.
 
+## Helper en lugar de inferencia (`0.21.0`)
+
+El 13 de noviembre de 2026, `environment_guarantees.py` sustituyó las consultas que `dirige` hacía por inferencia. Doce sesiones más, seis por modelo, sobre el mismo repositorio de ejemplo.
+
+| Modelo | Versión | Costo USD | Tokens (miles) | Turnos | Usó el helper | Ajuste de `.env` en el informe | Pruebas ocultas 6/6 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Fable 5.2 | 0.20.0 corregida | 1,14 ± 0,13 | 497 | 13 | no existía | 5/6 | 6/6 |
+| Fable 5.2 | 0.21.0 con helper | 1,00 ± 0,09 | 398 | 10 | 6/6 | 6/6 | 6/6 |
+| Opus 5.5 | 0.20.0 antes de la corrección | 0,46 ± 0,04 | 412 | 10 | no existía | 6/6 | 6/6 |
+| Opus 5.5 | 0.21.0 con helper | 0,50 ± 0,04 | 480 | 12 | 6/6 | 6/6 | 6/6 |
+
+- **Fable 5.2:** el sobrecosto frente a `main` baja del 20 % al 5 %, y el ajuste llega en las seis sesiones.
+- **Opus 5.5:** no hay ahorro. El costo sube unos 0,04 USD, cerca de una desviación estándar: las dos ejecuciones del helper son dos turnos más, y Opus ya hacía esas consultas agrupadas en uno.
+- **Propuesta ajustada:** ningún informe copió reglas ajenas al encargo; el helper propone solo lo que falta.
+- **Error corregido en la referencia:** la ruta `branches/<rama>/protection` responde 404 a quien no administra el repositorio aunque la rama esté protegida. El helper lee `branches/<rama>` y los rulesets.
+
+Defecto del banco visto en esta tanda: las sesiones concurrentes se ven entre sí y tres de 42 escribieron a otra. Una sesión de Fable recibió una pregunta después de entregar; sus métricas usan el primer resultado.
+
 ## Qué no cubren estas pruebas
 
 Una sola tarea, con un subagente, sin merge ni despliegue pedidos y sin revisión independiente. Ninguna sesión corrió en T3, en Orca ni con Codex, y `gh` era un sustituto. El banco de pruebas no está en el repositorio. Los contratos de Claude Code se contrastaron con su documentación y con el CLI 2.1.322; los de Codex, con `codex --help` 0.167.1.
