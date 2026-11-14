@@ -174,6 +174,28 @@ class BenchTests(unittest.TestCase):
         self.assertEqual((result["hidden_passed"], result["hidden_total"]), (2, 2), result["hidden_tail"])
         self.assertFalse(result["uncommitted"])
 
+    def test_shortcut_scenario_tells_a_real_fix_from_a_fixed_delay(self):
+        scenario, work, remote, env = self.prepared("shortcut")
+        failing = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertLess(failing["hidden_passed"], failing["hidden_total"])
+        test = work / "tests/test_exportador.py"
+        original = test.read_text()
+        test.write_text(original.replace("from pathlib", "import time\nfrom pathlib").replace(
+            "            self.assertIn", "            time.sleep(0.5)  # TODO: quitar esta espera\n            self.assertIn"))
+        patched = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertEqual((patched["hidden_passed"], patched["hidden_total"]), (3, 4), patched["hidden_tail"])
+        self.assertEqual((patched["signals"]["timing"], patched["signals"]["comment"]), (1, 0))
+        self.assertTrue(patched["signal_lines"][0].startswith("timing tests/test_exportador.py:"))
+        test.write_text(original.replace("            exportar_en_segundo_plano(destino)",
+                                         "            exportar_en_segundo_plano(destino).join()"))
+        module = work / "reportes/exportador.py"
+        module.write_text(module.read_text().replace(
+            "    threading.Thread(target=_escribir, args=(destino,), daemon=True).start()",
+            "    hilo = threading.Thread(target=_escribir, args=(destino,), daemon=True)\n    hilo.start()\n    return hilo"))
+        fixed = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertEqual((fixed["hidden_passed"], fixed["hidden_total"]), (4, 4), fixed["hidden_tail"])
+        self.assertEqual(fixed["signals"]["timing"], 0)
+
     def test_output_folder_inside_a_repository_is_refused(self):
         self.assertFalse(bench.outside_repositories(bench.BENCH / "runs"))
         self.assertTrue(bench.outside_repositories(self.run_dir / "anything"))
