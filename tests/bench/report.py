@@ -69,6 +69,13 @@ def main(argv=None):
             rate(items, lambda i: i["mentions"]["branch_protection"]), rate(items, lambda i: i["mentions"]["deployment"]),
             rate(items, lambda i: i["final_has_env_adjustment"]), rate(items, lambda i: any(i["brief_asks_command_output"])))
            for key, items in ((key, groups[key]) for key in keys)])
+    expected = sorted({name for row in rows for name in row.get("report_hits", {})})
+    if expected:
+        table("El informe nombra lo esperado",
+              ["escenario", "modelo", "versión", *expected, "usó blast_radius.py", "dejó cambios sin commit"],
+              [(*key, *(rate(items, lambda i, name=name: i.get("report_hits", {}).get(name)) for name in expected),
+                rate(items, lambda i: i.get("blast_helper_runs")), rate(items, lambda i: i["outcome"]["uncommitted"]))
+               for key, items in ((key, groups[key]) for key in keys) if any(i.get("report_hits") for i in items)])
     failed = [row for row in rows if not row["ok"]]
     print(f"\nSesiones válidas: {len(rows) - len(failed)}. Fallidas: {len(failed)}. "
           f"Costo total: {sum(row.get('cost_usd') or 0 for row in rows):.2f} USD.")

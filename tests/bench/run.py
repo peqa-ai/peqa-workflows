@@ -90,6 +90,10 @@ def prepare(run_dir, scenario):
     sh("git", "config", "user.name", "dev", cwd=work)
     sh("git", "config", "user.email", "dev@example.invalid", cwd=work)
     sh("git", "switch", "-q", "-c", scenario["branch"], cwd=work)
+    if scenario.get("change"):  # The change under review, already committed on the work branch.
+        shutil.copytree(scenario["folder"] / scenario["change"], work, dirs_exist_ok=True)
+        sh("git", "add", "-A", cwd=work)
+        sh("git", "commit", "-qm", scenario["change_message"], cwd=work)
     return work, remote
 
 
@@ -119,8 +123,14 @@ def blocks(event):
 
 
 def analyse(stream_path, plugin_dir):
-    """Metrics from the session's event stream. Only the first result counts as the delivery."""
-    tools, reads, bash, briefs, texts, result, extra = [], [], [], [], [], None, 0
+    """Metrics from the session's event stream.
+
+    A session can emit several results: one each time it stops to wait for a
+    background subagent, and one more if it answers another session afterwards.
+    Cost and tokens are cumulative, so they come from the last result; the
+    delivery is the longest result text.
+    """
+    tools, reads, bash, briefs, texts, results = [], [], [], [], [], []
     canary_seen = False
     for line in stream_path.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
@@ -128,10 +138,7 @@ def analyse(stream_path, plugin_dir):
         except ValueError:
             continue
         if event.get("type") == "result":
-            if result is not None:
-                extra += 1
-                break
-            result = event
+            results.append(event)
             continue
         for block in blocks(event):
             if block.get("type") == "tool_use":
@@ -147,8 +154,9 @@ def analyse(stream_path, plugin_dir):
                 canary_seen = canary_seen or CANARY in json.dumps(block.get("content"), ensure_ascii=False)
             elif block.get("type") == "text" and event.get("type") == "assistant" and not event.get("parent_tool_use_id"):
                 texts.append(block.get("text", ""))
-    result = result or {}
-    final = result.get("result") or ""
+    result = results[-1] if results else {}
+    extra = max(0, len(results) - 1)
+    final = max((item.get("result") or "" for item in results), key=len, default="")
     said = "\n".join(texts) + "\n" + final
     opened = "\n".join(reads + bash)  # Sessions open plugin files with Read or with cat, sed and grep.
     plugin_files = sorted(str(path.relative_to(plugin_dir)) for path in plugin_dir.rglob("*.md")
@@ -158,14 +166,14 @@ def analyse(stream_path, plugin_dir):
     tokens = {key: sum(int(model.get(key) or 0) for model in usage.values()) for key in TOKEN_KEYS}
     helper = [command for command in bash if "environment_guarantees.py" in command]
     return {
-        "ok": bool(result) and not result.get("is_error"),
+        "ok": bool(results) and not any(item.get("is_error") for item in results),
         "terminal": result.get("subtype"),
         "cost_usd": result.get("total_cost_usd"),
         "cost_by_model": {name: model.get("costUSD") for name, model in usage.items()},
         "tokens": tokens,
         "tokens_total": sum(tokens.values()),
-        "num_turns": result.get("num_turns"),
-        "duration_s": round((result.get("duration_ms") or 0) / 1000),
+        "num_turns": sum(item.get("num_turns") or 0 for item in results),
+        "duration_s": round(sum(item.get("duration_ms") or 0 for item in results) / 1000),
         "tool_calls": len(tools),
         "subagents": sum(1 for tool in tools if tool["name"] in ("Agent", "Task")),
         "bash_calls": len(bash),
@@ -250,6 +258,8 @@ def measure(run_dir, meta):
     metrics.update(analyse(run_dir / "stream.jsonl", run_dir / "plugin"))
     metrics["gh"] = gh_calls(run_dir / "gh.jsonl")
     metrics["outcome"] = outcome(run_dir, run_dir / "work", run_dir / "github.com/acme/reportes.git", scenario)
+    metrics["report_hits"] = {name: bool(re.search(pattern, metrics["final_text"], re.I))
+                              for name, pattern in scenario.get("expect_in_report", {}).items()}
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=1, ensure_ascii=False), encoding="utf-8")
     return metrics
 

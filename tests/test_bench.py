@@ -128,7 +128,7 @@ class BenchTests(unittest.TestCase):
         self.assertIn("branch_protection", data["missing"])
         self.assertIn("deployment", data["missing"])
 
-    def test_metrics_use_the_first_result_and_count_shell_reads(self):
+    def test_metrics_take_cost_from_the_last_result_and_the_report_from_the_longest(self):
         plugin = self.run_dir / "plugin"
         (plugin / "references").mkdir(parents=True)
         (plugin / "references/environment-guarantees.md").write_text("x")
@@ -144,17 +144,35 @@ class BenchTests(unittest.TestCase):
              "modelUsage": {"m": {"inputTokens": 1, "outputTokens": 2, "cacheReadInputTokens": 3,
                                   "cacheCreationInputTokens": 4, "costUSD": 0.5}}},
             {"type": "assistant", "message": {"content": [{"type": "text", "text": "respuesta a otra sesión"}]}},
-            {"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0.9, "result": "otra"},
+            {"type": "result", "subtype": "success", "is_error": False, "num_turns": 1, "duration_ms": 9000,
+             "total_cost_usd": 0.9, "result": "otra",
+             "modelUsage": {"m": {"inputTokens": 2, "outputTokens": 4, "cacheReadInputTokens": 6,
+                                  "cacheCreationInputTokens": 8, "costUSD": 0.9}}},
         ]
         stream = self.run_dir / "stream.jsonl"
         stream.write_text("\n".join(json.dumps(event) for event in events))
         metrics = bench.analyse(stream, plugin)
-        self.assertEqual((metrics["cost_usd"], metrics["tokens_total"], metrics["extra_results"]), (0.5, 10, 1))
+        self.assertEqual((metrics["cost_usd"], metrics["tokens_total"], metrics["extra_results"]), (0.9, 20, 1))
+        self.assertEqual((metrics["num_turns"], metrics["duration_s"]), (5, 70))
+        self.assertTrue(metrics["final_text"].startswith("Ningún check corre"))
         self.assertEqual(metrics["plugin_files_read"], ["references/environment-guarantees.md"])
         self.assertEqual((metrics["helper_runs"], metrics["helper_flags"]), (1, ["--merge"]))
         self.assertEqual((metrics["brief_asks_command_output"], metrics["brief_forbids_env"]), ([True], [True]))
         self.assertTrue(metrics["mentions"]["no_checks"] and metrics["final_has_env_adjustment"])
         self.assertFalse(metrics["secret_opened"])
+
+    def test_review_scenario_commits_a_change_that_breaks_files_outside_the_diff(self):
+        scenario, work, remote, env = self.prepared("review")
+        changed = self.call(env, work, "git", "diff", "--name-only", "main", "HEAD").stdout.split()
+        self.assertEqual(changed, ["reportes/__main__.py", "reportes/reporte.py", "tests/test_reporte.py"])
+        suite = self.call(env, work, sys.executable, "-m", "unittest", "discover", "-s", "tests")
+        self.assertEqual(suite.returncode, 0, suite.stderr)
+        for module, call in (("reportes.facturas", "facturas_por_cliente()"), ("integraciones.erp.cierre", "cierre_mensual()")):
+            broken = self.call(env, work, sys.executable, "-c", f"import {module} as m; m.{call}")
+            self.assertNotEqual(broken.returncode, 0, module)
+        result = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertEqual((result["hidden_passed"], result["hidden_total"]), (2, 2), result["hidden_tail"])
+        self.assertFalse(result["uncommitted"])
 
     def test_output_folder_inside_a_repository_is_refused(self):
         self.assertFalse(bench.outside_repositories(bench.BENCH / "runs"))

@@ -9,7 +9,7 @@ Ejecuta sesiones reales de Claude Code sin interfaz (`claude -p`) sobre un proye
 - **Nada llega a GitHub.** `shims/gh` registra cada llamada y responde con el estado que define el escenario. El remoto es un repositorio bare en disco, y `shims/git` muestra una URL de GitHub en su lugar. `shims/codex` se presenta como no instalado.
 - **Proyecto nuevo en cada sesión**, con archivos `.env*` generados al momento y un valor canario para detectar si alguien los abre.
 - **Aceptación oculta.** `acceptance.py` prueba el resultado sin que el agente lo vea.
-- **Sesiones aisladas entre sí.** Se niega `SendMessage`, y las métricas usan el primer evento `result`.
+- **Sesiones aisladas entre sí.** Se niega `SendMessage`. Una sesión puede emitir varios eventos `result`, uno cada vez que espera a un subagente en segundo plano: el costo sale del último y el informe es el más largo.
 
 ## Usar
 
@@ -29,6 +29,7 @@ Repite cada combinación varias veces y alterna el orden de las versiones. Con s
 | --- | --- | --- |
 | `feature` | Funcionalidad pequeña con `dirige`, un subagente | `main` sin protección, sin CI, `.env` local |
 | `merge-deploy` | La misma, pidiendo el merge y un despliegue con `scripts/deploy.sh staging` | Lo anterior, sin entornos de despliegue y con `.env.staging` |
+| `review` | `revisa` sobre un cambio ya hecho que rompe dos archivos fuera del diff, sin pruebas | El de `feature` |
 
 Un escenario es una carpeta en `scenarios/` con `scenario.json` (prompt, rama, secretos y estado de GitHub), una plantilla de proyecto y `acceptance.py`.
 
