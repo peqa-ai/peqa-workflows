@@ -27,4 +27,4 @@ Estas reglas aplican al desarrollo de este plugin. El comportamiento de cada ski
 
 - Usa español en la documentación para personas. El README explica el uso con ejemplos y diagramas Mermaid que aclaren relaciones o decisiones; enlaza los detalles en lugar de repetirlos.
 - Al tocar nombres, empaquetado, un helper o su ruta, ejecuta `python3 -m unittest discover -s tests -v`. La suite incluye frontmatter, metadatos de interfaz, enlaces relativos y manifiestos, y el CI la repite en cada PR. Conserva la política de invocación existente salvo un cambio solicitado.
-- Para instrucciones, comprueba escenarios que puedan cambiar de comportamiento. Distingue validación estática, simulaciones y pruebas entre sesiones reales al informar resultados.
+- Para instrucciones, comprueba escenarios que puedan cambiar de comportamiento. Las simulaciones pulen la redacción; para decidir si una frase cambia la conducta o el costo, compara sesiones reales con [el banco de medición](tests/bench/README.md), que gasta dinero: acuerda antes cuántas sesiones. Distingue validación estática, simulaciones y pruebas entre sesiones reales al informar resultados.

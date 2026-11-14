@@ -321,6 +321,8 @@ python3 -m unittest discover -s tests -v
 
 Las pruebas usan repositorios temporales y datos sintéticos. También comprueban el paquete: que los tres manifiestos coincidan, que cada skill se llame como su carpeta y que los enlaces relativos de la documentación existan. [El CI](.github/workflows/ci.yml) ejecuta la misma suite en cada PR, en Linux y macOS.
 
+Para comparar dos versiones de un skill con sesiones reales, usa [el banco de medición](tests/bench/README.md). Cada sesión llama al modelo y cuesta dinero.
+
 ## Licencia
 
 [MIT](LICENSE). Puedes usar, modificar y distribuir el plugin, también con fines comerciales y en productos cerrados, conservando el aviso de copyright y la licencia. Se proporciona sin garantía.
