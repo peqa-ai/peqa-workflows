@@ -17,6 +17,8 @@ Si no hay pruebas, informa dónde buscaste y qué comportamiento queda sin compr
 
 Parte del diff real, los gitlinks y las dependencias observadas. Sigue las conexiones pertinentes; no conviertas cada revisión en una auditoría completa del sistema.
 
+El padre ejecuta el helper `scripts/blast_radius.py` de este skill con `map --repo "$REVIEW_REPO" --base <base>`, más `--uncommitted` si revisa trabajo sin commit, y entrega su JSON al revisor como mapa de partida. El revisor sigue desde ahí las conexiones que el mapa no ve, listadas en `limits`, y la clasificación sigue siendo un juicio con una razón concreta.
+
 - **Cambio directo:** funciones, servicios, configuración, dependencias o esquema que cambian, y quién consume sus resultados.
 - **Propagación:** API, eventos, colas, clientes, librerías compartidas, permisos, datos persistidos y orden de despliegue que puedan transmitir el efecto a otros servicios. Incluye consumidores relevantes aunque no tengan diff ni PR.
 - **Condiciones e impacto:** rutas y usuarios afectados, exposición, compatibilidad entre versiones, posibilidad de pérdida de datos o indisponibilidad, reversibilidad y rollback. Una migración irreversible requiere más evidencia que un cambio local reversible.
