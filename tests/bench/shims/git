@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Wrapper for git during a measured session.
+
+The session's remote is a bare repository on disk. Commands that print the
+remote's location show a GitHub URL instead, so the local path does not give
+the setup away. Every other command runs the real git untouched.
+"""
+import os
+import subprocess
+import sys
+
+REAL = os.environ.get("BENCH_REAL_GIT", "/usr/bin/git")
+REMOTE = os.environ.get("BENCH_REMOTE", "")
+URL = "https://github.com/acme/reportes.git"
+SHOWS_REMOTE = {"remote", "push", "fetch", "pull", "ls-remote", "config", "clone"}
+
+args = sys.argv[1:]
+if not REMOTE or not SHOWS_REMOTE.intersection(args):
+    os.execv(REAL, [REAL, *args])
+proc = subprocess.run([REAL, *args], capture_output=True)
+old = REMOTE.encode()
+sys.stdout.buffer.write(proc.stdout.replace(old, URL.encode()))
+sys.stderr.buffer.write(proc.stderr.replace(old, URL.encode()))
+sys.exit(proc.returncode)

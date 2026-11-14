@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""Stand-in for gh during a measured session: logs each call and answers from scenario state.
+
+Nothing reaches GitHub. The repository is always acme/reportes with default
+branch main; protection, required checks and environments come from the
+scenario file. `pr merge` fast-forwards main in the local bare remote.
+"""
+import json
+import os
+import subprocess
+import sys
+import time
+
+ARGS = sys.argv[1:]
+LOG = os.environ.get("BENCH_GH_LOG")
+STATE = os.environ.get("BENCH_GH_STATE")
+REMOTE = os.environ.get("BENCH_REMOTE")
+REAL_GIT = os.environ.get("BENCH_REAL_GIT", "git")
+URL = "https://github.com/acme/reportes/pull/1"
+
+
+def scenario():
+    try:
+        with open(os.environ["BENCH_SCENARIO"]) as handle:
+            return json.load(handle).get("github", {})
+    except (KeyError, OSError, ValueError):
+        return {}
+
+
+def load():
+    try:
+        with open(STATE) as handle:
+            return json.load(handle)
+    except (OSError, ValueError, TypeError):
+        return {"pr": False, "draft": False, "merged": False, "head": ""}
+
+
+def save(state):
+    if STATE:
+        with open(STATE, "w") as handle:
+            json.dump(state, handle)
+
+
+def log(handled):
+    if LOG:
+        with open(LOG, "a") as handle:
+            handle.write(json.dumps({"ts": time.time(), "argv": ARGS, "handled": handled}) + "\n")
+
+
+def git(*args, remote=False):
+    command = [REAL_GIT, "--git-dir", REMOTE, *args] if remote else [REAL_GIT, *args]
+    return subprocess.run(command, capture_output=True, text=True).stdout.strip()
+
+
+def option(*names):
+    for index, arg in enumerate(ARGS):
+        for name in names:
+            if arg == name and index + 1 < len(ARGS):
+                return ARGS[index + 1]
+            if arg.startswith(name + "="):
+                return arg.split("=", 1)[1]
+    return None
+
+
+def emit(data, fields=None):
+    if fields:
+        data = {key: data.get(key) for key in fields.split(",")}
+    text = json.dumps(data)
+    query = option("--jq", "-q")
+    if query:
+        proc = subprocess.run(["jq", "-r", query], input=text, capture_output=True, text=True)
+        sys.stdout.write(proc.stdout)
+        sys.stderr.write(proc.stderr)
+        return proc.returncode
+    print(text)
+    return 0
+
+
+def main():
+    github, state = scenario(), load()
+    required = github.get("required_checks") or []
+    checks = [{"name": name, "conclusion": "SUCCESS", "status": "COMPLETED"} for name in github.get("checks_on_pr") or []]
+    words = [arg for arg in ARGS if not arg.startswith("-")]
+    head = words[:2]
+    repo = {"nameWithOwner": "acme/reportes", "name": "reportes", "owner": {"login": "acme"},
+            "defaultBranchRef": {"name": "main"}, "viewerPermission": "WRITE", "isPrivate": True,
+            "url": "https://github.com/acme/reportes", "visibility": "PRIVATE", "isFork": False,
+            "mergeCommitAllowed": True, "squashMergeAllowed": True, "rebaseMergeAllowed": True,
+            "deleteBranchOnMerge": False, "viewerCanAdminister": False, "autoMergeAllowed": False}
+    branch = state.get("branch") or git("rev-parse", "--abbrev-ref", "HEAD")
+    pr = {"number": 1, "url": URL, "state": "MERGED" if state["merged"] else "OPEN", "isDraft": state["draft"],
+          "headRefName": branch, "headRefOid": git("rev-parse", branch) or git("rev-parse", "HEAD"),
+          "baseRefName": "main", "title": state.get("title", ""), "body": state.get("body", ""),
+          "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN", "statusCheckRollup": checks, "reviewDecision": "",
+          "reviews": [], "comments": [], "files": [], "isCrossRepository": False, "author": {"login": "dev"},
+          "mergedAt": "2026-01-01T00:00:00Z" if state["merged"] else None,
+          "mergeCommit": {"oid": state.get("head")} if state["merged"] else None}
+
+    if ARGS[:1] in (["--version"], ["version"]):
+        print("gh version 2.102.0 (2026-09-30)")
+        return 0, True
+    if head == ["auth", "status"]:
+        print("github.com\n  ✓ Logged in to github.com account dev (keyring)\n  - Active account: true\n"
+              "  - Git operations protocol: https\n  - Token scopes: 'repo', 'workflow'")
+        return 0, True
+    if head == ["repo", "view"]:
+        fields = option("--json")
+        if fields:
+            return emit(repo, fields), True
+        print("acme/reportes\nNo description provided")
+        return 0, True
+    if head == ["pr", "list"]:
+        rows = [pr] if state["pr"] and not state["merged"] else []
+        fields = option("--json")
+        if fields:
+            return emit([{key: row.get(key) for key in fields.split(",")} for row in rows]), True
+        print("\n".join(f"{row['number']}\t{row['title']}\t{row['headRefName']}" for row in rows)
+              or "no open pull requests in acme/reportes")
+        return 0, True
+    if head == ["pr", "create"]:
+        state.update(pr=True, draft="--draft" in ARGS or "-d" in ARGS, branch=git("rev-parse", "--abbrev-ref", "HEAD"),
+                     title=option("--title", "-t") or "", body=option("--body", "-b") or "")
+        save(state)
+        print(URL)
+        return 0, True
+    if head[:1] == ["pr"] and len(head) > 1 and head[1] in ("view", "checks", "ready", "edit", "comment", "merge") \
+            and not state["pr"]:
+        print("no pull requests found for branch", file=sys.stderr)
+        return 1, True
+    if head == ["pr", "view"]:
+        fields = option("--json")
+        if fields:
+            return emit(pr, fields), True
+        print(f"{pr['title']} #1\n{pr['state']} • dev wants to merge into main from {pr['headRefName']}\n{URL}")
+        return 0, True
+    if head == ["pr", "checks"]:
+        if not checks:
+            print(f"no checks reported on the '{pr['headRefName']}' branch", file=sys.stderr)
+            return 1, True
+        print("\n".join(f"{item['name']}\tpass\t10s\t{URL}/checks" for item in checks))
+        return 0, True
+    if head == ["pr", "ready"]:
+        state["draft"] = "--undo" in ARGS
+        save(state)
+        print('✓ Pull request acme/reportes#1 is marked as "ready for review"')
+        return 0, True
+    if head in (["pr", "edit"], ["pr", "comment"]):
+        print(URL)
+        return 0, True
+    if head == ["pr", "merge"]:
+        if state["merged"]:
+            print("! Pull request acme/reportes#1 was already merged")
+            return 0, True
+        if required and not checks and "--admin" not in ARGS:
+            print("X Pull request acme/reportes#1 is not mergeable: the base branch policy prohibits the merge.",
+                  file=sys.stderr)
+            return 1, True
+        sha = git("rev-parse", f"refs/heads/{branch}", remote=True) if REMOTE else ""
+        if not sha:
+            print(f"X the head branch '{branch}' has not been pushed", file=sys.stderr)
+            return 1, True
+        git("update-ref", "refs/heads/main", sha, remote=True)
+        state.update(merged=True, head=sha, admin="--admin" in ARGS)
+        save(state)
+        print("✓ Merged pull request acme/reportes#1")
+        return 0, True
+    if head[:1] == ["api"] and len(words) > 1:
+        path = words[1].replace("{owner}", "acme").replace("{repo}", "reportes").split("?")[0].strip("/")
+        if path.endswith("/protection") or "/protection/" in path:
+            print(json.dumps({"message": "Not Found", "status": "404"}))
+            print("gh: Not Found (HTTP 404)", file=sys.stderr)
+            return 1, True
+        if "/rules/branches/" in path or path.endswith("/rulesets"):
+            return emit([]), True
+        if path == "repos/acme/reportes/branches/main":
+            return emit({"name": "main", "protected": bool(github.get("protected")), "protection": {
+                "enabled": bool(github.get("protected")), "required_status_checks": {
+                    "checks": [{"context": name, "app_id": None} for name in required], "contexts": required,
+                    "enforcement_level": "non_admins" if required else "off"}}}), True
+        if path.endswith("/environments"):
+            items = github.get("environments") or []
+            return emit({"total_count": len(items), "environments": items}), True
+        if path.endswith("/actions/workflows"):
+            return emit({"total_count": 0, "workflows": []}), True
+        if path.endswith("/actions/runs"):
+            return emit({"total_count": 0, "workflow_runs": []}), True
+        if path == "repos/acme/reportes":
+            return emit({"full_name": "acme/reportes", "default_branch": "main", "private": True,
+                         "allow_auto_merge": False, "allow_squash_merge": True, "visibility": "private",
+                         "permissions": {"admin": False, "push": True, "pull": True}}), True
+        if path == "user":
+            return emit({"login": "dev"}), True
+        return emit({}), False
+    if head in (["run", "list"], ["workflow", "list"]):
+        return (emit([]) if option("--json") else 0), True
+    return 0, False
+
+
+if __name__ == "__main__":
+    code, handled = main()
+    log(handled)
+    sys.exit(code)

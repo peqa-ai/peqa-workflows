@@ -1,0 +1,10 @@
+{
+  "description": "Revisión de un cambio ya hecho en la rama: renombra una clave y una función que usan dos archivos fuera del diff, sin pruebas.",
+  "prompt": "/peqa-workflows:revisa Revisa el cambio de esta rama frente a `main` antes de abrir el PR.",
+  "branch": "refactor/importe",
+  "change": "change",
+  "change_message": "Renombra total a importe en el reporte de ventas",
+  "secrets": [".env"],
+  "expect_in_report": {"facturas": "facturas\\.py", "cierre": "cierre\\.py"},
+  "github": {"protected": false, "required_checks": [], "environments": []}
+}
