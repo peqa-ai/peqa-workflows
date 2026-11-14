@@ -124,13 +124,21 @@ def proposed_denies(files):
     return rules
 
 
+def detect_runtime():
+    """Codex exports CODEX_THREAD_ID to the commands it runs. When a nested session
+    carries both clients' variables, prefer codex: it only reports, never proposes."""
+    return 'codex' if os.environ.get('CODEX_THREAD_ID') else 'claude'
+
+
 def secrets_check(root, runtime):
     files, truncated = secret_files(root)
     check = {'id': 'secrets', 'files': files, 'truncated': truncated}
     if not files:
         return dict(check, status='not_applicable')
     if runtime != 'claude':
-        return dict(check, status='not_verified', reason='CLIENT_SETTINGS_NOT_INSPECTABLE')
+        sandbox = os.environ.get('CODEX_SANDBOX')
+        return dict(check, status='not_verified', reason='CLIENT_SETTINGS_NOT_INSPECTABLE',
+                    codex_sandbox=sandbox if sandbox and len(sandbox) <= 64 else None)
     sources = (('local', root / '.claude/settings.local.json'), ('project', root / '.claude/settings.json'),
                ('user', Path.home() / '.claude/settings.json'))
     states, rules, sandbox = {}, [], None
@@ -270,7 +278,8 @@ def run(args):
         raise CheckError('REPOSITORY_DIRECTORY_REQUIRED')
     if args.pr and not PR_URL.fullmatch(args.pr):
         raise CheckError('PULL_REQUEST_URL_REQUIRED')
-    checks = [secrets_check(root, args.runtime)]
+    runtime = detect_runtime() if args.runtime == 'auto' else args.runtime
+    checks = [secrets_check(root, runtime)]
     wanted = [name for name, on in (('branch_protection', args.merge or args.pr), ('pr_checks', args.pr),
                                     ('deployment', args.deploy)) if on]
     if wanted:
@@ -286,7 +295,7 @@ def run(args):
                 checks.append(deploy_check(github))
     return {
         'schema_version': 1,
-        'runtime': args.runtime,
+        'runtime': runtime,
         'checks': checks,
         'missing': [check['id'] for check in checks if check['status'] == 'missing'],
         'not_verified': [check['id'] for check in checks if check['status'] == 'not_verified'],
@@ -305,7 +314,8 @@ def main(argv=None):
     parser = Parser(description=__doc__)
     parser.add_argument('action', choices=['check'])
     parser.add_argument('--repo', required=True)
-    parser.add_argument('--runtime', choices=['claude', 'codex'], default='claude')
+    parser.add_argument('--runtime', choices=['auto', 'claude', 'codex'], default='auto',
+                        help='client whose settings to inspect; auto detects Codex from its environment')
     parser.add_argument('--merge', action='store_true', help='the task asks to merge')
     parser.add_argument('--deploy', action='store_true', help='the task asks to deploy or publish')
     parser.add_argument('--pr', help='pull request URL, once it exists')

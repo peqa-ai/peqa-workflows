@@ -53,9 +53,9 @@ class GuaranteeTests(unittest.TestCase):
         fake.chmod(0o755)
         self.answers.write_text(json.dumps(answers))
 
-    def run_cli(self, *args, repo=None):
+    def run_cli(self, *args, repo=None, extra=None):
         env = {"HOME": str(self.home), "PATH": str(self.bin), "FAKE_GH_LOG": str(self.log),
-               "FAKE_GH_ANSWERS": str(self.answers)}
+               "FAKE_GH_ANSWERS": str(self.answers), **(extra or {})}
         proc = subprocess.run([sys.executable, str(SCRIPT), *args, "--repo", str(repo or self.repo)],
                               capture_output=True, text=True, timeout=30, env=env)
         return proc.returncode, proc.stdout, proc.stderr
@@ -142,6 +142,19 @@ class GuaranteeTests(unittest.TestCase):
         self.assertEqual(checks["secrets"]["status"], "not_verified")
         self.assertNotIn("proposal", checks["secrets"])
         self.assertEqual((data["missing"], data["not_verified"]), ([], ["secrets"]))
+
+    def test_codex_is_detected_from_its_environment_and_an_explicit_runtime_wins(self):
+        self.write(".env")
+        inside_codex = {"CODEX_THREAD_ID": "t-1", "CODEX_SANDBOX": "seatbelt", "CLAUDECODE": "1"}
+        code, out, _ = self.run_cli("check", extra=inside_codex)
+        data = json.loads(out)
+        self.assertEqual((code, data["runtime"], data["checks"][0]["status"]), (0, "codex", "not_verified"))
+        self.assertEqual(data["checks"][0]["codex_sandbox"], "seatbelt")
+        self.assertNotIn("proposal", data["checks"][0])
+        code, out, _ = self.run_cli("check", "--runtime", "claude", extra=inside_codex)
+        self.assertEqual((json.loads(out)["runtime"], json.loads(out)["checks"][0]["status"]), ("claude", "missing"))
+        code, out, _ = self.run_cli("check", extra={"CLAUDECODE": "1"})
+        self.assertEqual(json.loads(out)["runtime"], "claude")
 
     def test_missing_gh_leaves_server_checks_not_verified(self):
         self.write(".env")

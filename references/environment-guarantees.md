@@ -24,7 +24,7 @@ python3 "$PEQA_PLUGIN/scripts/environment_guarantees.py" check --repo "$PEQA_REP
 | Al empezar, si el encargo pide desplegar o publicar | `--deploy` | Entornos de despliegue con reglas de protección |
 | Al preparar la entrega | `--pr <URL>` | La rama principal y los checks que corrieron en ese PR |
 
-Con Codex añade `--runtime codex`. Cada elemento de `checks` trae un `status`:
+El helper detecta Codex por su entorno; `--runtime claude` o `--runtime codex` lo fijan a mano. Cada elemento de `checks` trae un `status`:
 
 - `missing`: la garantía falta. Trae una `proposal` que nombra solo lo que falta.
 - `not_verified`: no se pudo leer, por ejemplo sin `gh`, sin remoto en GitHub o sin permiso. Decláralo sin comprobar; no lo presentes como ausente.
