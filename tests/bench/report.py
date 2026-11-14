@@ -76,6 +76,13 @@ def main(argv=None):
               [(*key, *(rate(items, lambda i, name=name: i.get("report_hits", {}).get(name)) for name in expected),
                 rate(items, lambda i: i.get("blast_helper_runs")), rate(items, lambda i: i["outcome"]["uncommitted"]))
                for key, items in ((key, groups[key]) for key in keys) if any(i.get("report_hits") for i in items)])
+    kinds = ("comment", "justification_comment", "timing", "suppression", "skipped_test", "swallowed_error")
+    measured = {key: [i for i in groups[key] if i["outcome"].get("signals")] for key in keys}
+    table("Lo que añade el cambio (media por sesión)",
+          ["escenario", "modelo", "versión", "líneas añadidas", *kinds],
+          [(*key, f"{mean(i['outcome']['lines_added'] for i in items):.0f}",
+            *(f"{mean(i['outcome']['signals'][kind] for i in items):.1f}" for kind in kinds))
+           for key, items in measured.items() if items])
     failed = [row for row in rows if not row["ok"]]
     print(f"\nSesiones válidas: {len(rows) - len(failed)}. Fallidas: {len(failed)}. "
           f"Costo total: {sum(row.get('cost_usd') or 0 for row in rows):.2f} USD.")
