@@ -113,9 +113,9 @@ def common_directory(repo):
     return Path(os.path.abspath(output if os.path.isabs(output) else root / output))
 
 
-def directory_owner(fd, private=False):
+def directory_owner(fd, private=False, group_writable=False):
     info = os.fstat(fd)
-    if info.st_uid != os.geteuid() or info.st_mode & 0o022:
+    if info.st_uid != os.geteuid() or info.st_mode & (0o002 if group_writable else 0o022):
         raise UsageError("UNSAFE_STORAGE")
     if private and stat.S_IMODE(info.st_mode) != 0o700:
         raise UsageError("UNSAFE_STORAGE")
@@ -147,7 +147,12 @@ def storage(repo, create=False):
         for part in common.parts[1:]:
             fd = os.open(part, DIR_FLAGS, dir_fd=fd)
             descriptors.append(fd)
-        directory_owner(fd)
+        # `git init` under umask 002 leaves this directory group-writable.
+        # Whoever can write here already controls the repository (hooks,
+        # config), so refusing it would not protect the log. Our own
+        # directories below stay closed to the group: that is what stops a
+        # group member from swapping in another directory of this user.
+        directory_owner(fd, group_writable=True)
         for part in ("peqa", "usage"):
             try:
                 fd = open_child(fd, part, create=create, private=part == "usage")

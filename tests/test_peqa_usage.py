@@ -397,6 +397,112 @@ class UsageTests(unittest.TestCase):
             self.assertEqual(self.record()[0], 2)
             path.chmod(original)
 
+    def group_writable_repo(self):
+        """Recreate the fixture as `git init` leaves it under umask 002.
+
+        Ubuntu desktops default to that umask; CI runners use 022. The helper
+        subprocesses of the calling test inherit it until cleanup.
+        """
+        self.addCleanup(os.umask, os.umask(0o002))
+        self.repo = self.root / "group-writable-project"
+        self.repo.mkdir()
+        self.git("init", "-q")
+        self.location = self.repo / ".git/peqa/usage"
+        self.state_path = self.location / "state.json"
+        self.assertEqual(self.mode(self.repo / ".git") & 0o022, 0o020)
+
+    def mode(self, path):
+        return stat.S_IMODE(path.stat().st_mode)
+
+    def rejected(self, action="status"):
+        code, result = self.record() if action == "record" else self.invoke(action)
+        self.assertEqual((code, result), (2, {"error": "UNSAFE_STORAGE"}))
+
+    def test_git_directory_created_with_umask_002_is_accepted(self):
+        self.group_writable_repo()
+        self.ok("enable")
+        invocation = str(uuid.uuid4())
+        self.assertEqual(self.record(invocation)[1]["status"], "recorded")
+        self.assertEqual(self.ok("status")["event_count"], 1)
+        self.assertEqual(self.ok("summary")["totals"]["started"], 1)
+        self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                 "commit", "--allow-empty", "-qm", "fixture")
+        worktree = self.root / "group-writable-worktree"
+        self.git("worktree", "add", "-q", "--detach", str(worktree))
+        self.assertEqual(self.record(invocation, repo=worktree)[1]["status"], "duplicate")
+        self.ok("disable")
+        self.assertEqual(self.record()[1]["reason"], "disabled")
+        # The helper's own storage stays private whatever the umask.
+        self.assertEqual(self.mode(self.location.parent), 0o700)
+        self.assertEqual(self.mode(self.location), 0o700)
+        for item in self.location.iterdir():
+            self.assertEqual(self.mode(item), 0o600)
+
+    def test_group_write_is_accepted_only_on_the_git_directory(self):
+        self.group_writable_repo()
+        self.ok("enable")
+        self.record()
+        before = self.state_path.read_bytes()
+        for path, original, loosened in ((self.location.parent, 0o700, 0o720),
+                                         (self.location.parent, 0o700, 0o775),
+                                         (self.location, 0o700, 0o720),
+                                         (self.location, 0o700, 0o770),
+                                         (self.state_path, 0o600, 0o620),
+                                         (self.location / "usage.lock", 0o600, 0o660)):
+            with self.subTest(path=path.name, mode=oct(loosened)):
+                path.chmod(loosened)
+                for action in ("enable", "status", "record"):
+                    self.rejected(action)
+                path.chmod(original)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertEqual(self.ok("status")["event_count"], 1)
+
+    def test_group_writable_storage_made_outside_the_helper_is_not_adopted(self):
+        self.group_writable_repo()
+        (self.repo / ".git/peqa").mkdir()
+        self.assertEqual(self.mode(self.repo / ".git/peqa") & 0o022, 0o020)
+        self.rejected("enable")
+        self.assertEqual(list((self.repo / ".git/peqa").iterdir()), [])
+
+    def test_git_directory_writable_by_others_is_rejected(self):
+        for prepare in (lambda: None, self.group_writable_repo):
+            prepare()
+            marker = self.repo / ".git"
+            original = self.mode(marker)
+            for loosened in (0o757, 0o777):
+                with self.subTest(original=oct(original), mode=oct(loosened)):
+                    marker.chmod(loosened)
+                    self.rejected("enable")
+                    self.assertFalse((marker / "peqa").exists())
+                    marker.chmod(original)
+            self.ok("enable")
+            marker.chmod(0o777)
+            for action in ("status", "record"):
+                self.rejected(action)
+            marker.chmod(original)
+
+    def test_directory_of_another_owner_is_rejected(self):
+        self.group_writable_repo()
+        module = self.helper_module()
+        other = os.geteuid() + 1
+        with patch.object(module.os, "geteuid", return_value=other):
+            with self.assertRaises(module.UsageError) as error:
+                module.execute("enable", str(self.repo))
+        self.assertEqual(str(error.exception), "UNSAFE_STORAGE")
+        self.assertFalse((self.repo / ".git/peqa").exists())
+        self.ok("enable")
+        with patch.object(module.os, "geteuid", return_value=other):
+            with self.assertRaises(module.UsageError) as error:
+                module.execute("status", str(self.repo))
+        self.assertEqual(str(error.exception), "UNSAFE_STORAGE")
+
+    def helper_module(self):
+        spec = importlib.util.spec_from_file_location("peqa_usage", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        with patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
+            spec.loader.exec_module(module)
+        return module
+
     def test_corrupt_or_unknown_state_is_not_overwritten(self):
         self.ok("enable")
         valid = self.state_path.read_bytes()
@@ -415,10 +521,7 @@ class UsageTests(unittest.TestCase):
         self.assertEqual(self.invoke("status")[0], 2)
 
     def test_record_limit_preserves_existing_history(self):
-        spec = importlib.util.spec_from_file_location("peqa_usage", SCRIPT)
-        module = importlib.util.module_from_spec(spec)
-        with patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
-            spec.loader.exec_module(module)
+        module = self.helper_module()
         self.ok("enable")
         self.record()
         before = self.state_path.read_bytes()
