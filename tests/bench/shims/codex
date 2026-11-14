@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stand-in for codex: reports itself as not installed, so reviews take the documented fallback.
+[ -n "${BENCH_GH_LOG:-}" ] && printf '{"ts": 0, "argv": ["CODEX", "%s"], "handled": true}\n' "${1:-}" >> "$BENCH_GH_LOG"
+echo "codex: command not found" >&2
+exit 127
