@@ -10,6 +10,8 @@ python3 "$PEQA_PLUGIN/scripts/peqa_usage.py" disable --repo "$PEQA_REPO"
 
 Sin activación, `status`, `summary` y `record` no crean directorios ni archivos; `record` devuelve `skipped`. `disable` detiene nuevas escrituras y conserva el historial. Los worktrees del repositorio comparten `<git-common-dir>/peqa/usage`, con permisos privados. Otro clon o computadora tiene un registro independiente.
 
+El helper responde `UNSAFE_STORAGE` si el directorio común de Git pertenece a otro usuario o admite escritura de otros. Acepta que el grupo escriba en él, como lo deja `git init` con umask 002, porque quien escribe ahí ya controla el repositorio. Debajo no cede: `peqa` rechaza la escritura del grupo, `usage` exige 0700 y sus archivos 0600.
+
 ## Durante una invocación
 
 Si `status` indica activación, el agente que ejecuta el skill genera un UUIDv4 aleatorio para esa invocación y lo conserva hasta terminar. Usa el nombre canónico del skill y el runtime observado: `t3-codex`, `t3-claude`, `orca-codex`, `orca-claude`, `codex` o `claude`. El runtime sigue el host que [herramientas del entorno](runtime-tools.md#detectar-y-elegir) identifica: T3, después Orca y después el cliente nativo. No atribuyas invocaciones de herramientas o lecturas de archivos a un skill que no se ejecutó.
