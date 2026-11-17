@@ -197,7 +197,7 @@ class BenchTests(unittest.TestCase):
         test = work / "tests/test_exportador.py"
         original = test.read_text()
         test.write_text(original.replace("from pathlib", "import time\nfrom pathlib").replace(
-            "            self.assertIn", "            time.sleep(0.5)  # TODO: quitar esta espera\n            self.assertIn"))
+            "            self.assertIn", "            time.sleep(0.9)  # TODO: quitar esta espera\n            self.assertIn"))
         patched = bench.outcome(self.run_dir, work, remote, scenario)
         self.assertEqual((patched["hidden_passed"], patched["hidden_total"]), (3, 4), patched["hidden_tail"])
         self.assertEqual((patched["signals"]["timing"], patched["signals"]["comment"]), (1, 0))
