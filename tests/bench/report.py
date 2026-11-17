@@ -76,6 +76,13 @@ def main(argv=None):
               [(*key, *(rate(items, lambda i, name=name: i.get("report_hits", {}).get(name)) for name in expected),
                 rate(items, lambda i: i.get("blast_helper_runs")), rate(items, lambda i: i["outcome"]["uncommitted"]))
                for key, items in ((key, groups[key]) for key in keys) if any(i.get("report_hits") for i in items)])
+    remembered = [key for key in keys if any("memory_helper_runs" in i for i in groups[key])]
+    table("Memoria del proyecto",
+          ["escenario", "modelo", "versión", "ejecutó project_memory.py", "leyó memoria-extraer o su referencia",
+           "algún encargo lleva la memoria"],
+          [(*key, rate(groups[key], lambda i: i.get("memory_helper_runs")), rate(groups[key], lambda i: i.get("memory_skill_read")),
+            rate(groups[key], lambda i: any(i.get("brief_passes_memory") or [])))
+           for key in remembered])
     kinds = ("comment", "justification_comment", "timing", "suppression", "skipped_test", "swallowed_error")
     measured = {key: [i for i in groups[key] if i["outcome"].get("signals")] for key in keys}
     table("Lo que añade el cambio (media por sesión)",

@@ -18,7 +18,7 @@ Se usa diciéndole a `dirige` lo que quieres y dejándolo trabajar. `dirige` rep
 
 ## Cómo se reparte el trabajo
 
-`dirige` mantiene al agente padre a cargo de la entrega. Al empezar recupera la memoria del proyecto con `memoria-extraer`, si existe. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: la decisión es tuya.
+`dirige` mantiene al agente padre a cargo de la entrega. Al empezar lee la memoria del proyecto con el helper de `memoria-extraer`, sin que tengas que pedirlo, y pasa a cada subagente las notas pertinentes. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: la decisión es tuya.
 
 ```mermaid
 flowchart TD
