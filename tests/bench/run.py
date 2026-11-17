@@ -185,6 +185,10 @@ def analyse(stream_path, plugin_dir):
         "helper_flags": sorted({flag for command in helper for flag in ("--merge", "--deploy", "--pr") if flag in command}),
         "blast_helper_runs": sum("blast_radius.py" in command for command in bash),
         "patch_helper_runs": sum("patch_signals.py" in command for command in bash),
+        "memory_helper_runs": sum("project_memory.py" in command for command in bash),
+        "memory_skill_read": any(name.startswith(("skills/memoria-extraer/", "references/project-memory.md"))
+                                 for name in plugin_files),
+        "brief_passes_memory": [bool(re.search(r"punto y coma|separador|memoria|`;`", brief, re.I)) for brief in briefs],
         "settings_reads": sum(1 for path in reads if path.endswith(("settings.json", "settings.local.json")))
         + sum(1 for command in bash if "settings" in command and ".claude" in command),
         "secret_opened": canary_seen,

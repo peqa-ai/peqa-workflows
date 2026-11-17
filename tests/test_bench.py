@@ -98,6 +98,22 @@ class BenchTests(unittest.TestCase):
         self.assertEqual((after["hidden_passed"], after["hidden_total"]), (6, 6), after["hidden_tail"])
         self.assertEqual((after["merged"], after["deploys"], after["main_moved"]), (False, 0, False))
 
+    def test_memory_scenario_ships_a_readable_store_and_only_the_remembered_separator_passes(self):
+        scenario, work, remote, env = self.prepared("memoria")
+        memory = subprocess.run([sys.executable, str(bench.REPO / "scripts/project_memory.py"), "extract", "--repo",
+                                 str(work), "--all"], capture_output=True, text=True, timeout=60)
+        listed = json.loads(memory.stdout)
+        self.assertEqual((listed["complete"], listed["errors_total"]), (True, 0), memory.stdout)
+        self.assertIn("formatos", {item["metadata"]["category"] for item in listed["items"]})
+        self.assertNotIn("separador", (work / "README.md").read_text())
+        self.solve(work)
+        comma = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertLess(comma["hidden_passed"], comma["hidden_total"])
+        exporter = work / "reportes/exportar.py"
+        exporter.write_text(exporter.read_text().replace("csv.DictWriter(salida,", "csv.DictWriter(salida, delimiter=';',"))
+        semicolon = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertEqual((semicolon["hidden_passed"], semicolon["hidden_total"]), (7, 7), semicolon["hidden_tail"])
+
     def test_stand_in_gh_reports_state_merges_locally_and_deploy_is_recorded(self):
         scenario, work, remote, env = self.prepared("merge-deploy")
         self.assertEqual(self.call(env, work, "gh", "pr", "merge", "1").returncode, 1)
@@ -181,7 +197,7 @@ class BenchTests(unittest.TestCase):
         test = work / "tests/test_exportador.py"
         original = test.read_text()
         test.write_text(original.replace("from pathlib", "import time\nfrom pathlib").replace(
-            "            self.assertIn", "            time.sleep(0.5)  # TODO: quitar esta espera\n            self.assertIn"))
+            "            self.assertIn", "            time.sleep(0.9)  # TODO: quitar esta espera\n            self.assertIn"))
         patched = bench.outcome(self.run_dir, work, remote, scenario)
         self.assertEqual((patched["hidden_passed"], patched["hidden_total"]), (3, 4), patched["hidden_tail"])
         self.assertEqual((patched["signals"]["timing"], patched["signals"]["comment"]), (1, 0))
