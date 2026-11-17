@@ -33,3 +33,19 @@ Otro agente fresco repitió solo los casos corregidos, con el registro de uso ac
 Los agentes también señalaron ambigüedades previas a este cambio y fuera de su alcance: cuándo corresponde la puerta de revisión, si un pedido de implementación incluye abrir un PR y qué párrafos de `dirige` aplican a un hijo.
 
 `test_peqa_usage.py` cubre que los eventos históricos de `memoria-recuerda` y `peqa-memoria-recuerda` se agrupan bajo `memoria-guardar` sin reescribir el archivo, y que los nombres anteriores no se aceptan para registrar.
+
+## Helper directo: medición del 17 de noviembre de 2026
+
+Desde este cambio, `dirige` ejecuta `project_memory.py extract --all` al empezar, en lugar de leer antes `memoria-extraer` y `references/project-memory.md`. Se midió con el escenario `memoria` del [banco](bench/README.md): el encargo de `feature` en un proyecto con dos notas, una que fija `;` como separador del CSV y otra ajena al encargo. El prompt no menciona el separador y la aceptación oculta lo comprueba. Se comparó `main` (0.22.0) con el cambio, tres sesiones reales por celda, 8,87 USD en total.
+
+| Modelo | Versión | Aceptación completa | Ejecutó el helper | Leyó `memoria-extraer` o su referencia | Encargo al hijo con la nota | Costo USD | Turnos |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Opus 5.5 | `main` | 3/3 | 1/3 | 3/3 | 3/3 | 0,48 ± 0,04 | 10 ± 1 |
+| Opus 5.5 | cambio | 3/3 | 3/3 | 0/3 | 3/3 | 0,45 ± 0,03 | 10 ± 1 |
+| Fable 5.2 | `main` | 3/3 | 2/3 | 3/3 | 3/3 | 1,08 ± 0,11 | 11 ± 1 |
+| Fable 5.2 | cambio | 3/3 | 3/3 | 0/3 | 3/3 | 0,94 ± 0,06 | 9 ± 0 |
+
+- Las doce sesiones aplicaron el separador y lo citaron en el informe. El resultado no distingue las versiones.
+- En `main`, las sesiones que no ejecutaron el helper encontraron las notas explorando el árbol con `ls` o `find`: el proyecto de ejemplo tiene pocos archivos y las notas están confirmadas en Git. En un repositorio grande esa exploración es menos probable; el banco no lo mide.
+- Con el cambio, 6 de 6 ejecutaron el helper y ninguna leyó las dos referencias.
+- Fable bajó dos turnos y unos 0,14 USD, cerca de una desviación estándar de `main`. Con Opus no hay diferencia. Con tres sesiones por celda no se puede afirmar el ahorro.
