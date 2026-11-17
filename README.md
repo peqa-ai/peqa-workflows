@@ -2,7 +2,7 @@
 
 Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
 
-`0.22.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.23.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Para quién es
 
@@ -18,7 +18,7 @@ Se usa diciéndole a `dirige` lo que quieres y dejándolo trabajar. `dirige` rep
 
 ## Cómo se reparte el trabajo
 
-`dirige` mantiene al agente padre a cargo de la entrega. Al empezar lee la memoria del proyecto con el helper de `memoria-extraer`, sin que tengas que pedirlo, y pasa a cada subagente las notas pertinentes. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: la decisión es tuya.
+`dirige` mantiene al agente padre a cargo de la entrega. Desde `0.23.0`, al empezar lee la memoria del proyecto con el helper de `memoria-extraer`, sin que tengas que pedirlo, y pasa a cada subagente las notas pertinentes. Antes de editar, descubre sesiones relacionadas y acuerda quién toca los recursos compartidos. Todo cambio termina en un PR contra la rama principal, como borrador mientras el trabajo sigue. Ningún commit se queda solo en local ni va directo a la rama principal. Al terminar te pregunta si quieres mezclarlo: la decisión es tuya.
 
 ```mermaid
 flowchart TD
