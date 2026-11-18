@@ -9,17 +9,17 @@
     "dirige",
     "medicion"
   ],
-  "source": "Sesión del 2026-11-12 y 13; PR #16 y #17 de peqa-ai/peqa-workflows; tests/environment-guarantees-scenarios.md",
+  "source": "Sesión del 2026-11-12 y 13; PR #16 y #17 de peqa-ai/peqa-workflows; tests/environment-guarantees-scenarios.md; tests/bench/run.py en 1a70a15",
   "scope": "project",
   "machine": null,
   "verification": "observed",
   "environment": "Claude Code 2.1.322 sin interfaz, modo automático; Opus 5.5 y Fable 5.2",
-  "recheck": "Si el banco se añade al repositorio o cambian las opciones de claude -p",
+  "recheck": "Si cambian las opciones de claude -p o la lectura de eventos de tests/bench/run.py",
   "created_at": "2026-11-13T22:21:28.775475Z",
-  "updated_at": "2026-11-13T22:21:28.775475Z"
+  "updated_at": "2026-11-18T20:47:38.385543Z"
 }
 ---
-Receta usada el 12 y 13 de noviembre de 2026: 42 sesiones, unos 34 USD. El banco no está en el repositorio.
+Receta usada el 12 y 13 de noviembre de 2026: 42 sesiones, unos 34 USD. Desde v0.22.0 el banco vive en `tests/bench/` y su guía es `tests/bench/README.md`; esta nota conserva los tropiezos que lo motivaron.
 
 - Exporta cada versión del plugin con `git archive <ref>` a una carpeta y cárgala con `claude -p --plugin-dir`. Opciones usadas: `--permission-mode auto --output-format stream-json --verbose --setting-sources project,local --strict-mcp-config --no-session-persistence --max-budget-usd`.
 - Cada sesión trabaja en un repositorio de ejemplo nuevo, con un remoto bare local. Un `gh` sustituto al inicio del `PATH` registra cada llamada y responde con un estado fijo.
@@ -29,7 +29,7 @@ Receta usada el 12 y 13 de noviembre de 2026: 42 sesiones, unos 34 USD. El banco
 Tropiezos:
 
 - Al limpiar el entorno de la sesión hija, conserva las variables de credenciales del cliente. Sin ellas falla con «OAuth session expired».
-- Las sesiones concurrentes se ven con `ListAgents`, y 3 de 42 escribieron a otra. Una pregunta recibida después de entregar produce un segundo evento `result`: usa el primero.
+- Las sesiones concurrentes se ven con `ListAgents`, y 3 de 42 escribieron a otra. Una sesión puede emitir varios eventos `result` (al esperar a un subagente en segundo plano o al responder a otra sesión): `run.py` toma el costo del último y el informe del más largo.
 - Los agentes abren los archivos del plugin con `cat` o `sed` en Bash, no solo con `Read`. Cuenta ambos.
 - Un valor canario en `.env` permite detectar si alguien lo abrió.
 - Un remoto con ruta local delata el montaje: una sesión no abrió PR por eso.
