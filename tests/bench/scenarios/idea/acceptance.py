@@ -25,7 +25,10 @@ class Hidden(unittest.TestCase):
         self.assertEqual(git("branch", "--format=%(refname:short)").split(), [BRANCH, "main"])
 
     def test_nothing_was_pushed(self):
-        self.assertEqual(git("for-each-ref", "--format=%(refname:short)", "refs/remotes").split(), ["origin/main"])
+        # Some Git versions also record origin/HEAD on fetch; it points at main and is not a push.
+        refs = [ref for ref in git("for-each-ref", "--format=%(refname)", "refs/remotes").split()
+                if ref != "refs/remotes/origin/HEAD"]
+        self.assertEqual(refs, ["refs/remotes/origin/main"])
 
     def test_tracked_files_are_unchanged(self):
         self.assertEqual(git("diff", "--name-only", "HEAD"), "")
