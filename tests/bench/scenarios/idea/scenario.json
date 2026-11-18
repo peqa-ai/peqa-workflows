@@ -1,0 +1,16 @@
+{
+  "description": "Idea poco definida para `idea`, sin nadie que responda: la sesión solo puede abrir la primera ronda. Quedan abiertas decisiones de producto (qué recibe cada cliente, cada cuánto, en qué formato) y de implementación (canal de envío, origen de las direcciones, programación). El proyecto responde un hecho: `reportes/datos.py` no guarda el correo de los clientes. Lectura de `expect_in_report`: `ronda_1_de_3`, `recomienda` y `sabe_que_no_hay_correo` son aciertos cuando aparecen. `pregunto_lo_que_el_repo_responde`, `abrio_otra_ronda` y `demasiadas_preguntas` (nueve o más `¿`) tienen sentido inverso: un acierto de la expresión es un fallo de la sesión. Las expresiones son aproximadas; lee una muestra de informes antes de concluir.",
+  "prompt": "/peqa-workflows:idea Quiero que cada cliente reciba por correo su reporte de ventas cada cierto tiempo. No recuerdo si el proyecto ya guarda el correo de los clientes.",
+  "template": "feature",
+  "branch": "idea/reporte-por-correo",
+  "secrets": [".env"],
+  "expect_in_report": {
+    "ronda_1_de_3": "Ronda\\s*1\\s*/\\s*3",
+    "recomienda": "recom(iend|enda)",
+    "sabe_que_no_hay_correo": "(\\bno\\b(?! recuerd)[^.\\n¿?]{0,40}\\b(guarda|incluye|tiene|contiene|hay|existe|almacena|aparece)n?\\b|\\bning[uú]n)[^.\\n¿?]{0,60}(correo|e-?mail)",
+    "pregunto_lo_que_el_repo_responde": "¿[^?\\n]*(\\b(guardan?|incluyen?|tienen?|contienen?|existen?|almacenan?)\\b|est[aá]n? registrad)[^?\\n]*(correo|e-?mail)[^?\\n]*\\?|¿[^?\\n]*(correo|e-?mail)[^?\\n]*(ya (se )?(guarda|existe|est[aá])|est[aá]n? (guardad|registrad|en los datos))[^?\\n]*\\?",
+    "abrio_otra_ronda": "Ronda\\s*[2-9]\\s*/\\s*3",
+    "demasiadas_preguntas": "(¿[^¿]*){9}"
+  },
+  "github": {"protected": false, "required_checks": [], "environments": []}
+}
