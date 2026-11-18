@@ -41,10 +41,10 @@ def save(state):
             json.dump(state, handle)
 
 
-def log(handled):
+def log(handled, code):
     if LOG:
         with open(LOG, "a") as handle:
-            handle.write(json.dumps({"ts": time.time(), "argv": ARGS, "handled": handled}) + "\n")
+            handle.write(json.dumps({"ts": time.time(), "argv": ARGS, "handled": handled, "code": code}) + "\n")
 
 
 def git(*args, remote=False):
@@ -198,5 +198,5 @@ def main():
 
 if __name__ == "__main__":
     code, handled = main()
-    log(handled)
+    log(handled, code)
     sys.exit(code)
