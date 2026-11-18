@@ -1,0 +1,145 @@
+{
+  "skill": "memoria-guardar",
+  "queries": [
+    {
+      "id": "guardar-recuerda-que-separador",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Recuerda que en este proyecto los CSV que exportamos usan punto y coma como separador, porque el equipo de contabilidad los abre con una hoja de cálculo configurada en español. Vale para cualquier exportación futura, no solo para `reportes/exportar.py`. Que quede para las próximas sesiones."
+    },
+    {
+      "id": "guardar-guarda-decision-sin-cache",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Guarda como memoria del proyecto la decisión que acabamos de tomar: no añadimos caché al reporte de ventas porque el cálculo tarda menos de un segundo y la invalidación complicaba el código. Incluye el motivo, para que otra sesión no lo vuelva a proponer sin datos nuevos."
+    },
+    {
+      "id": "guardar-anota-para-futuras-sesiones",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Anota para futuras sesiones cómo se prueba este repositorio: `python3 -m unittest discover -s tests` desde la raíz, sin dependencias externas, y las pruebas de exportación necesitan la variable `TZ=UTC` para que las fechas no cambien. Hoy perdí media hora descubriéndolo y no quiero que se repita."
+    },
+    {
+      "id": "guardar-recuerda-que-despliegue",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Recuerda que el despliegue a staging de este servicio se hace solo los martes y jueves, con `scripts/deploy.sh staging`, y que antes hay que avisar en el canal del equipo. No lo ejecutes ahora; solo quiero que quede registrado como contexto operativo del proyecto."
+    },
+    {
+      "id": "guardar-actualiza-nota-existente",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Actualiza la nota que teníamos sobre el formato de fechas: ya no usamos `dd/mm/aaaa` en los reportes, desde esta semana todo va en ISO `aaaa-mm-dd`, incluidos los nombres de archivo de las exportaciones. La nota anterior quedó obsoleta y no quiero que una sesión futura la siga."
+    },
+    {
+      "id": "guardar-que-no-se-te-olvide",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Que no se te olvide para la próxima vez: el módulo `reportes/datos.py` es de solo lectura para nosotros porque lo genera otro equipo desde su sistema de ventas; cualquier cambio de datos se pide a ellos. Déjalo guardado en el proyecto para que ninguna sesión lo edite por su cuenta."
+    },
+    {
+      "id": "guardar-deja-registrada-convencion",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Deja registrada esta convención del equipo: las ramas se llaman `feat/<tema>` o `fix/<tema>` en minúsculas con guiones, y los mensajes de commit van en español con el prefijo del tipo de cambio. Es conocimiento del proyecto que quiero disponible en cualquier sesión futura."
+    },
+    {
+      "id": "guardar-en-remember-that-rounding",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Remember that totals in this project are always rounded half-up to two decimals at the very end, never per line, because the finance team reconciles against the grand total. That applies to `reportes/reporte.py` and to any export we add later. Keep it for future sessions."
+    },
+    {
+      "id": "guardar-en-save-note-flaky-test",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Save a note in the project memory: `tests/test_reporte.py` has one test that fails when the system locale is not UTF-8, and the fix is to run the suite with `LC_ALL=C.UTF-8`. We decided not to change the test itself. Future sessions should know this before they try to debug it again."
+    },
+    {
+      "id": "guardar-en-remember-going-forward",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Please remember going forward that this repository must stay standard-library only: no third-party packages, not even for tests. We agreed on that today after discussing an Excel export. Store the decision and the reason so the next session doesn't suggest adding a dependency."
+    },
+    {
+      "id": "guardar-neg-recuerdas-separador",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "«¿Recuerdas…?» pregunta por algo ya guardado: lectura, no escritura.",
+      "query": "¿Recuerdas qué separador acordamos para los CSV que exporta este proyecto? Voy a escribir `reportes/exportar.py` y no quiero adivinarlo. Creo que quedó anotado junto con el motivo; dime qué dice la nota y de cuándo es, sin modificar nada."
+    },
+    {
+      "id": "guardar-neg-que-sabemos-despliegue",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "«¿Qué sabemos de…?» pide recuperar contexto existente.",
+      "query": "¿Qué sabemos de cómo se despliega este servicio a staging? Necesito los días permitidos, el comando y a quién hay que avisar antes. Busca en lo que el proyecto tenga guardado de sesiones anteriores y resúmelo; no ejecutes ningún despliegue ni anotes nada nuevo."
+    },
+    {
+      "id": "guardar-neg-te-acuerdas-recuerdame",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "«¿Te acuerdas…? Recuérdame…» pide que el asistente recuerde al usuario algo ya registrado.",
+      "query": "¿Te acuerdas de por qué descartamos la caché en el reporte de ventas? Recuérdame la razón exacta que dejamos anotada, porque me lo están preguntando en una reunión y no quiero improvisar. Solo necesito lo que ya está guardado en el proyecto."
+    },
+    {
+      "id": "guardar-neg-carga-toda-la-memoria",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "Pide cargar las notas existentes antes de trabajar, no crear una nueva.",
+      "query": "Antes de que toquemos nada hoy, carga todas las categorías de memoria que tenga este proyecto y dame un resumen de las convenciones y decisiones vigentes. Acabo de volver de vacaciones y quiero ponerme al día con lo que quedó guardado mientras no estuve."
+    },
+    {
+      "id": "guardar-neg-guardar-plan-de-tareas",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Un plan de tareas completo en un archivo no es una memoria pequeña y duradera.",
+      "query": "Guarda en `docs/plan-exportacion.md` el plan de tareas completo para la exportación a CSV: las seis tareas con su orden, quién hace cada una, los criterios de aceptación y las fechas estimadas. Es el plan de trabajo de este encargo, así que escríbelo entero como documento."
+    },
+    {
+      "id": "guardar-neg-guardar-cambios-commit",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "«Guarda los cambios» aquí significa hacer un commit, no guardar conocimiento del proyecto.",
+      "query": "Guarda los cambios que tengo sin confirmar en `reportes/reporte.py` y `tests/test_reporte.py`: haz un commit en la rama actual con el mensaje «fix: redondeo del total al final». No subas nada al remoto ni toques otros archivos; solo quiero que el trabajo no se pierda."
+    },
+    {
+      "id": "guardar-neg-cuestionar-convencion",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "idea",
+      "why": "Aún no hay decisión que guardar: pide cuestionar la propuesta.",
+      "query": "Estoy por proponer al equipo que todos los CSV usen punto y coma y fechas ISO, pero todavía no lo hemos decidido y no quiero que quede anotado como norma. Cuestiona la propuesta: ¿a quién le rompe algo?, ¿qué alternativa hay?, ¿qué tendría que confirmar antes de fijarla?"
+    },
+    {
+      "id": "guardar-neg-en-do-you-remember",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "\"Do you remember…?\" asks to recall stored context, not to store something new.",
+      "query": "Do you remember what we decided about third-party dependencies in this repository? I think there was a note from a few weeks ago explaining why we stayed standard-library only. Tell me what the stored note says and its reason; I'm not adding anything new."
+    },
+    {
+      "id": "guardar-neg-en-recall-rounding",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "\"Recall what we know\" is retrieval of existing project memory.",
+      "query": "Before I touch `reportes/reporte.py`, recall what we know about how totals should be rounded in this project. There should be something recorded from an earlier session about half-up rounding and when it is applied. Just retrieve it and summarise it for me."
+    },
+    {
+      "id": "guardar-neg-en-save-transcript",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": null,
+      "why": "A full transcript dump is explicitly not a small, durable project memory.",
+      "query": "Save the full transcript of this session, every message and every command output, into `notes/session-2026-03-02.md` so I can attach it to a support ticket. I don't want a summary or selected decisions, I need the complete conversation written to that file as is."
+    }
+  ]
+}
