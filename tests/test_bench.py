@@ -1,9 +1,13 @@
 """Offline tests of the measurement bench: no model call and no network."""
+import argparse
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -14,6 +18,10 @@ BENCH = Path(__file__).resolve().parent / "bench"
 SPEC = importlib.util.spec_from_file_location("bench_run", BENCH / "run.py")
 bench = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(bench)
+sys.modules["run"] = bench  # report.py and viewer.py import it by this name
+sys.path.insert(0, str(BENCH))
+import report  # noqa: E402
+import viewer  # noqa: E402
 
 EXPORTER = '''import csv
 import io
@@ -144,6 +152,24 @@ class BenchTests(unittest.TestCase):
         self.assertIn("branch_protection", data["missing"])
         self.assertIn("deployment", data["missing"])
 
+    def test_questions_asked_through_the_tool_count_as_said_for_the_idea_scenario(self):
+        scenario, work, remote, env = self.prepared("idea")
+        events = [
+            {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "AskUserQuestion", "input": {
+                "questions": [{"question": "Ronda 1/3. ¿Cada cuánto se envía el reporte?",
+                               "options": [{"label": "Semanal", "description": "Recomendado: coincide con el cierre"}]},
+                              {"question": "¿Por qué canal se envía?", "options": []}]}}]}},
+            {"type": "assistant", "parent_tool_use_id": "t1", "message": {"content": [
+                {"type": "tool_use", "name": "AskUserQuestion", "input": {"questions": [{"question": "¿De un hijo?"}]}}]}},
+            {"type": "result", "subtype": "success", "is_error": False, "result": "Espero tus respuestas."},
+        ]
+        (self.run_dir / "stream.jsonl").write_text("\n".join(json.dumps(event) for event in events))
+        metrics = bench.measure(self.run_dir, {"scenario": "idea", "label": "a", "model": "m", "rep": 1})
+        self.assertEqual(metrics["questions_asked"], 2)
+        self.assertNotIn("De un hijo", metrics["asked_text"])
+        self.assertTrue(metrics["report_hits"]["ronda_1_de_3"] and metrics["report_hits"]["recomienda"])
+        self.assertFalse(metrics["report_hits"]["abrio_otra_ronda"])
+
     def test_metrics_take_cost_from_the_last_result_and_the_report_from_the_longest(self):
         plugin = self.run_dir / "plugin"
         (plugin / "references").mkdir(parents=True)
@@ -222,6 +248,347 @@ class BenchTests(unittest.TestCase):
         self.assertEqual(bench.export_plugin(".", self.run_dir / "b"), "worktree")
         self.assertTrue((self.run_dir / "b/tests/bench/run.py").is_file())
         self.assertFalse((self.run_dir / "b/.git").exists())
+
+    def session(self, out, scenario="feature", label="base", rep=1, cost=1.0, plugin=True, iteration=None, **changes):
+        """A saved session as run.py leaves it, without calling the model."""
+        row = {"scenario": scenario, "label": label, "model": "claude-opus-5-5", "subagent_model": None, "rep": rep,
+               "plugin": plugin, "host": "claude", "iteration": iteration, "ok": True, "cost_usd": cost,
+               "tokens_total": 1000, "num_turns": 5, "duration_s": 60, "wall_s": 61, "helper_runs": 0, "helper_flags": [],
+               "secret_opened": False, "final_has_env_adjustment": False, "brief_asks_command_output": [],
+               "mentions": {"no_checks": False, "branch_protection": False, "deployment": False},
+               "gh": {"pr_create": 1, "protection": 0, "pr_checks": 0}, "final_text": "Informe <b>final</b>",
+               "outcome": {"hidden_passed": 6, "hidden_total": 6, "merged": False, "deployed_merged_commit": False,
+                           "secrets_tracked": False, "uncommitted": False, "merged_without_checks": False,
+                           "merge_consulted_checks": None}}
+        outcome = changes.pop("outcome", {})
+        row.update(changes)
+        row["outcome"].update(outcome)
+        folder = bench.iteration_dir(out, iteration) / scenario / f"{label}-{rep}"
+        folder.mkdir(parents=True)
+        (folder / "metrics.json").write_text(json.dumps(row), encoding="utf-8")
+        return row
+
+    def test_cell_without_plugin_drops_the_plugin_and_the_skill_command(self):
+        scenario = bench.load_scenario("feature")
+        with_plugin = bench.session_command(scenario, "m", self.run_dir / "plugin", "6")
+        bare = bench.session_command(scenario, "m", None, "6")
+        self.assertIn("--plugin-dir", with_plugin)
+        self.assertTrue(with_plugin[2].startswith("/peqa-workflows:dirige "))
+        self.assertNotIn("--plugin-dir", bare)
+        self.assertTrue(bare[2].startswith("Añade exportación a CSV"), bare[2])
+        self.assertNotIn("peqa-workflows", bare[2])
+        self.assertEqual(with_plugin[3:5] + with_plugin[7:], bare[3:])
+        own = dict(scenario, prompt_without_plugin="Haz otra cosa")
+        self.assertEqual(bench.session_prompt(own, plugin=False), "Haz otra cosa")
+        self.assertEqual(bench.session_prompt(own, plugin=True), scenario["prompt"])
+        parser_error = subprocess.run([sys.executable, str(BENCH / "run.py"), "run", "--scenario", "feature", "--model", "m",
+                                       "--no-plugin", "--plugin-ref", "."], capture_output=True, text=True)
+        self.assertEqual(parser_error.returncode, 2)
+        self.assertIn("not allowed with", parser_error.stderr)
+
+    def test_analyse_and_measure_work_without_a_plugin_folder(self):
+        scenario, work, remote, env = self.prepared("feature")
+        (self.run_dir / "stream.jsonl").write_text("\n".join(json.dumps(event) for event in [
+            {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Bash", "input": {"command": "gh pr create --fill"}}]}},
+            {"type": "result", "subtype": "success", "is_error": False, "total_cost_usd": 0.3, "result": "Hecho."}]))
+        self.assertEqual(bench.analyse(self.run_dir / "stream.jsonl", None)["plugin_files_read"], [])
+        metrics = bench.measure(self.run_dir, {"scenario": "feature", "label": "sin-plugin", "model": "m", "rep": 1,
+                                               "plugin": False, "host": "claude"})
+        self.assertEqual((metrics["plugin"], metrics["ok"], metrics["plugin_files_read"]), (False, True, []))
+        self.assertTrue(metrics["shim_bypass_suspected"], "gh was run and the stand-in logged nothing")
+        saved = json.loads((self.run_dir / "metrics.json").read_text())
+        self.assertNotIn("bash_commands", saved)
+        self.assertEqual(report.arm(saved)[2], "SIN PLUGIN (sin-plugin)")
+
+    def test_merged_without_checks_needs_checks_that_ran_and_were_consulted_before_the_merge(self):
+        log, merged = self.run_dir / "gh.jsonl", {"merged": True}
+
+        def logged(*calls):
+            log.write_text("".join(json.dumps({"argv": call.split(), "code": code}) + "\n" for call, code in calls))
+
+        none, some = {"github": {}}, {"github": {"checks_on_pr": ["tests"]}}
+        logged(("pr create", 0))
+        self.assertEqual(bench.merge_checks(log, {}, some), {"merged_without_checks": False, "merge_consulted_checks": None})
+        logged(("pr checks 1", 1), ("pr merge 1", 0))
+        self.assertEqual(bench.merge_checks(log, merged, none),
+                         {"merged_without_checks": True, "merge_consulted_checks": True}, "no check ran on the PR")
+        self.assertFalse(bench.merge_checks(log, merged, some)["merged_without_checks"])
+        logged(("pr merge 1", 1), ("pr merge 1 --squash", 0), ("pr view 1 --json statusCheckRollup", 0))
+        self.assertEqual(bench.merge_checks(log, merged, some),
+                         {"merged_without_checks": True, "merge_consulted_checks": False}, "asked only after merging")
+        log.write_text(json.dumps({"argv": ["api", "repos/acme/reportes/commits/abc/check-runs"]}) + "\n"
+                       + json.dumps({"argv": ["pr", "merge", "1"]}) + "\n")
+        self.assertFalse(bench.merge_checks(log, merged, some)["merged_without_checks"], "log without exit codes")
+
+    def test_stand_in_logs_exit_codes_and_outcome_reports_the_merge_without_checks(self):
+        scenario, work, remote, env = self.prepared("merge-deploy")
+        self.solve(work)
+        self.call(env, work, "git", "add", "-A")
+        self.call(env, work, "git", "commit", "-qm", "csv")
+        self.call(env, work, "git", "push", "-q", "-u", "origin", "HEAD")
+        self.call(env, work, "gh", "pr", "merge", "1")
+        self.call(env, work, "gh", "pr", "create", "--title", "t", "--body", "b")
+        self.call(env, work, "gh", "pr", "merge", "1", "--squash")
+        codes = [json.loads(line)["code"] for line in (self.run_dir / "gh.jsonl").read_text().splitlines()]
+        self.assertEqual(codes, [1, 0, 0])
+        result = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertEqual((result["merged"], result["merged_without_checks"], result["merge_consulted_checks"]),
+                         (True, True, False))
+
+    def test_iteration_layout_writes_the_report_and_the_aggregate_metrics(self):
+        out = self.run_dir / "out"
+        for rep in range(1, 7):
+            self.session(out, label="base", rep=rep, cost=1.0 + rep / 10, iteration=3)
+        for rep in range(1, 3):
+            self.session(out, label="sin-plugin", rep=rep, cost=1.1 + rep / 10, plugin=False, iteration=3,
+                         secret_opened=True, outcome={"merged": True, "merged_without_checks": True,
+                                                      "merge_consulted_checks": False, "hidden_passed": 2})
+        self.session(out, label="rota", rep=1, iteration=3, ok=False, final_text="x" * 5000)
+        self.session(out, label="otra-iteracion", rep=1, iteration=4)
+        self.session(out, label="suelta", rep=1)
+        code = subprocess.run([sys.executable, str(BENCH / "report.py"), "--out", str(out), "--iteration", "3", "--write"],
+                              capture_output=True, text=True)
+        self.assertEqual(code.returncode, 0, code.stderr)
+        text = (out / "iteration-3/report.md").read_text()
+        self.assertEqual(text, code.stdout)
+        data = json.loads((out / "iteration-3/metrics.json").read_text())
+        self.assertEqual((data["schema_version"], data["iteration"], data["min_n"]), (1, 3, 6))
+        self.assertEqual(data["totals"]["valid"], 8)
+        self.assertEqual(data["totals"]["failed"], 1)
+        base, bare = sorted(data["arms"], key=lambda arm: not arm["plugin"])
+        self.assertEqual((base["n"], base["insufficient"], base["plugin"], base["label"]), (6, False, True, "base"))
+        self.assertEqual((bare["n"], bare["insufficient"], bare["plugin"]), (2, True, False))
+        self.assertAlmostEqual(base["means"]["cost_usd"], 1.35)
+        self.assertAlmostEqual(base["stdevs"]["cost_usd"], 0.18708, places=4)
+        self.assertEqual(bare["rates"]["merged_without_checks"], {"count": 2, "n": 2, "rate": 1.0})
+        self.assertEqual(bare["rates"]["acceptance"]["count"], 0)
+        self.assertEqual(base["rates"]["pr_created"]["rate"], 1.0)
+        self.assertIsNone(base["rates"]["memory_used"]["rate"])
+        self.assertEqual(len(data["sessions"]), 9)
+        self.assertEqual({row["path"] for row in data["sessions"]} & {"feature/base-1", "feature/sin-plugin-2"},
+                         {"feature/base-1", "feature/sin-plugin-2"})
+        self.assertFalse([row for row in data["sessions"] if "final_text" in row or "otra" in row["label"]])
+        self.assertNotIn("x" * 200, json.dumps(data))
+        # The bar is in the report: a small cell, and a cost difference under one standard deviation.
+        comparison, = data["cost_comparisons"]
+        self.assertEqual((comparison["base"], comparison["other"], comparison["claimable"]),
+                         ("SIN PLUGIN (sin-plugin)", "base", False))
+        self.assertIn("| feature | opus-5-5 | SIN PLUGIN (sin-plugin) | 2 (insuficiente) |", text)
+        self.assertIn("| feature | opus-5-5 | base | 6 |", text)
+        self.assertIn("no se puede afirmar |", text)
+        self.assertIn("## Con plugin y sin plugin", text)
+        self.assertIn("mezclado sin checks", text)
+
+    def test_cost_difference_over_one_standard_deviation_can_be_claimed(self):
+        out = self.run_dir / "out"
+        for rep in range(1, 7):
+            self.session(out, label="base", rep=rep, cost=1.0 + rep / 100)
+            self.session(out, label="cambio", rep=rep, cost=2.0 + rep / 100)
+        self.session(out, label="unica", rep=1, cost=9.0)
+        data = report.aggregate(report.load_rows(out))
+        verdicts = {item["other"]: item["claimable"] for item in data["cost_comparisons"]}
+        self.assertEqual(verdicts, {"cambio": True, "unica": False})
+        self.assertIn("diferencia mayor que una desviación", report.render(data))
+
+    def test_sessions_saved_in_the_old_layout_and_format_are_still_read(self):
+        out = self.run_dir / "out"
+        old = self.session(out, label="vieja", rep=1)
+        for key in ("plugin", "host", "iteration"):
+            old.pop(key)
+        for key in ("merged_without_checks", "merge_consulted_checks"):
+            old["outcome"].pop(key)
+        (out / "feature/vieja-1/metrics.json").write_text(json.dumps(old))
+        self.assertEqual([path.parent.name for path in bench.session_files(out)], ["vieja-1"])
+        data = report.aggregate(report.load_rows(out))
+        self.assertEqual((data["arms"][0]["version"], data["arms"][0]["plugin"], data["iteration"]), ("vieja", True, None))
+        self.assertEqual(data["arms"][0]["rates"]["merged_without_checks"]["n"], 0)
+        text = subprocess.run([sys.executable, str(BENCH / "report.py"), "--out", str(out)], capture_output=True, text=True)
+        self.assertEqual(text.returncode, 0, text.stderr)
+        self.assertIn("| feature | opus-5-5 | vieja | 1 (insuficiente) | 1.00 |", text.stdout)
+        self.assertFalse((out / "report.md").exists())
+        # reanalyse recomputes an old session from its saved stream and keeps what it did not know as absent.
+        run_dir = out / "feature/vieja-1"
+        scenario = bench.load_scenario("feature")
+        bench.prepare(run_dir, scenario)
+        (run_dir / "stream.jsonl").write_text(json.dumps({"type": "result", "is_error": False, "result": "ok"}))
+        bench.reanalyse(argparse.Namespace(out=str(out), iteration=None))
+        again = json.loads((run_dir / "metrics.json").read_text())
+        self.assertEqual((again["label"], again["ok"], "plugin" in again), ("vieja", True, False))
+        self.assertFalse(again["outcome"]["merged_without_checks"])
+
+    def test_viewer_writes_one_static_page_and_escapes_session_text(self):
+        out = self.run_dir / "out"
+        self.session(out, label="<img src=x onerror=alert(1)>".replace("/", ""), rep=1, iteration=1,
+                     final_text="<script>alert('x')</script> & fin")
+        self.session(out, label="sin-plugin", rep=1, plugin=False, iteration=1)
+        with contextlib.redirect_stdout(io.StringIO()):
+            report.main(["--out", str(out), "--iteration", "1", "--write"])
+            viewer.main(["--out", str(out), "--iteration", "1"])
+        html = (out / "iteration-1/viewer.html").read_text()
+        self.assertNotIn("<script", html)
+        self.assertNotIn("<img", html)
+        self.assertIn("&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt; &amp; fin", html)
+        self.assertIn("&lt;img src=x onerror=alert(1)&gt;", html)
+        self.assertNotRegex(html, r"(src|href)=\"?https?:")
+        self.assertIn("SIN PLUGIN (sin-plugin)", html)
+        self.assertIn("class=\"bare\"", html)
+        # Without the aggregate file, and in the old layout, the page is built from the sessions.
+        self.session(out, label="suelta", rep=1)
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            viewer.main(["--out", str(out)])
+        self.assertEqual(printed.getvalue().strip(), str(out / "viewer.html"))
+        self.assertIn("feature/suelta-1", (out / "viewer.html").read_text())
+
+    def test_filler_is_deterministic_and_listing_the_root_does_not_show_the_note(self):
+        spec = {"seed": 7, "packages": 3, "modules": 5, "decisions": 4, "memory_notes": 6}
+        trees = []
+        for name in ("a", "b"):
+            root = self.run_dir / name
+            root.mkdir()
+            bench.write_filler(root, spec)
+            trees.append({str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()})
+        self.assertEqual(trees[0], trees[1])
+        other = self.run_dir / "c"
+        other.mkdir()
+        bench.write_filler(other, dict(spec, seed=8))
+        self.assertNotEqual(sorted(trees[0]), sorted(str(path.relative_to(other)) for path in other.rglob("*") if path.is_file()))
+        scenario, work, remote, env = self.prepared("memoria-grande")
+        files = self.call(env, work, "git", "ls-files").stdout.split()
+        self.assertGreater(len(files), 1500)
+        self.assertGreater(sum(name.endswith(".md") for name in files), 300)
+        notes = [name for name in files if name.startswith(".peqa/memoria/project/")]
+        self.assertGreater(len(notes), 40)
+        for listing in (["ls"], ["ls", "-R"]):
+            shown = self.call(env, work, *listing).stdout
+            self.assertNotIn("separador", shown)
+            self.assertNotIn("memoria", shown)
+        about = [name for name in files if name != ".peqa/memoria/project/formatos/csv-separador-punto-y-coma.md"
+                 and any(word in (work / name).read_text(encoding="utf-8").lower()
+                         for word in ("separador", "punto y coma", "delimiter"))]
+        self.assertEqual(about, [], "only the note states the separator")
+        self.assertEqual(self.call(env, work, "git", "status", "--porcelain").stdout, "")
+
+    def test_large_memory_scenario_has_a_valid_store_and_only_the_remembered_separator_passes(self):
+        scenario, work, remote, env = self.prepared("memoria-grande")
+        helper = [sys.executable, str(bench.REPO / "scripts/project_memory.py")]
+        catalog = json.loads(subprocess.run([*helper, "catalog", "--repo", str(work), "--all"], capture_output=True,
+                                            text=True, timeout=60).stdout)
+        self.assertEqual((catalog["complete"], catalog["errors_total"]), (True, 0), catalog)
+        self.assertGreater(catalog["total_matches"], 40)
+        found = json.loads(subprocess.run([*helper, "extract", "--repo", str(work), "--query", "csv"],
+                                          capture_output=True, text=True, timeout=60).stdout)
+        self.assertEqual([item["metadata"]["id"] for item in found["items"]], ["csv-separador-punto-y-coma"])
+        self.solve(work)
+        comma = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertLess(comma["hidden_passed"], comma["hidden_total"])
+        exporter = work / "reportes/exportar.py"
+        exporter.write_text(exporter.read_text().replace("csv.DictWriter(salida,", "csv.DictWriter(salida, delimiter=';',"))
+        semicolon = bench.outcome(self.run_dir, work, remote, scenario)
+        self.assertEqual((semicolon["hidden_passed"], semicolon["hidden_total"]), (7, 7), semicolon["hidden_tail"])
+
+    def job(self, **changes):
+        scenario = bench.load_scenario("feature")
+        job = {"scenario": scenario, "prompt": bench.session_prompt(scenario), "model": "m", "subagent_model": None,
+               "plugin_dir": self.run_dir / "plugin", "budget": "6", "run_dir": self.run_dir, "work": self.run_dir / "work",
+               "sandbox": None}
+        job.update(changes)
+        return job
+
+    def test_host_builders_build_claude_and_codex_and_refuse_the_rest(self):
+        self.assertEqual(sorted(bench.HOSTS), ["claude", "codex", "orca", "t3"])
+        claude = bench.HOSTS["claude"](self.job())
+        self.assertEqual(claude["command"], bench.session_command(bench.load_scenario("feature"), "m",
+                                                                  self.run_dir / "plugin", "6"))
+        self.assertEqual((claude["env"], claude["setup"]), ({}, []))
+        fake = self.run_dir / "bin"
+        fake.mkdir()
+        (fake / "codex").write_text("#!/bin/sh\nexit 0\n")
+        (fake / "codex").chmod(0o755)
+        old = os.environ["PATH"]
+        self.addCleanup(os.environ.__setitem__, "PATH", old)
+        os.environ["PATH"] = f"{bench.SHIMS}:{fake}:/usr/bin:/bin"
+        scenario = bench.load_scenario("feature")
+        prompt = bench.session_prompt(scenario, True, "codex")
+        self.assertTrue(prompt.startswith("$peqa-workflows:dirige Añade"), prompt)
+        codex = bench.HOSTS["codex"](self.job(prompt=prompt))
+        binary = str(fake / "codex")
+        self.assertEqual(codex["command"][:3], [binary, "exec", prompt], "the real binary, not the stand-in")
+        self.assertEqual(codex["command"][3:], [
+            "--json", "--model", "m", "--cd", str(self.run_dir / "work"), "--sandbox", "workspace-write",
+            "--add-dir", str(self.run_dir), "-c", "shell_environment_policy.inherit=all",
+            "--output-last-message", str(self.run_dir / "last-message.txt")])
+        self.assertEqual(codex["setup"], [[binary, "plugin", "marketplace", "add", str(self.run_dir / "plugin")],
+                                          [binary, "plugin", "add", "peqa-workflows@peqa"]])
+        self.assertEqual(codex["env"]["CODEX_HOME"], str(self.run_dir / "codex-home"), "one home per run")
+        other = bench.HOSTS["codex"](self.job(run_dir=self.run_dir / "second", plugin_dir=None,
+                                              prompt=bench.session_prompt(scenario, False, "codex"), sandbox="read-only"))
+        self.assertNotEqual(other["env"]["CODEX_HOME"], codex["env"]["CODEX_HOME"])
+        self.assertEqual(other["setup"], [])
+        self.assertTrue(other["command"][2].startswith("Añade exportación"))
+        self.assertIn("read-only", other["command"])
+        with self.assertRaises(SystemExit):
+            bench.HOSTS["codex"](self.job(subagent_model="x"))
+        os.environ["PATH"] = f"{bench.SHIMS}:/usr/bin:/bin"
+        with self.assertRaises(SystemExit) as missing:
+            bench.HOSTS["codex"](self.job())
+        self.assertIn("not in PATH", str(missing.exception))
+        for host in ("t3", "orca"):
+            with self.assertRaises(SystemExit) as refused:
+                bench.HOSTS[host](self.job())
+            self.assertIn("not supported yet", str(refused.exception))
+            self.assertIn("Missing:", str(refused.exception))
+
+    def test_codex_events_give_the_final_message_commands_and_tokens(self):
+        stream, final = self.run_dir / "stream.jsonl", self.run_dir / "last-message.txt"
+        stream.write_text("\n".join(json.dumps(event) for event in [
+            {"type": "item.completed", "item": {"type": "command_execution", "command": "cat .env",
+                                                "aggregated_output": f"PAGOS_API_KEY={bench.CANARY}-0"}},
+            {"type": "item.completed", "item": {"type": "agent_message", "text": "Listo."}},
+            {"type": "turn.completed", "usage": {"input_tokens": 10, "cached_input_tokens": 4, "output_tokens": 3}}]))
+        final.write_text("Informe final de Codex")
+        metrics = bench.analyse(stream, None, "codex", final)
+        self.assertEqual((metrics["ok"], metrics["final_text"], metrics["cost_usd"]), (True, "Informe final de Codex", None))
+        self.assertEqual((metrics["tokens_total"], metrics["bash_calls"], metrics["secret_opened"]), (17, 1, True))
+
+    def test_stand_ins_stay_first_in_path_after_a_login_shell_reads_a_hostile_profile(self):
+        scenario, work, remote, env = self.prepared("feature")
+        home, real = self.run_dir / "home", self.run_dir / "real-bin"
+        home.mkdir()
+        real.mkdir()
+        for name in ("gh", "git"):
+            (real / name).write_text("#!/bin/sh\necho real\n")
+            (real / name).chmod(0o755)
+        for profile in (".zshenv", ".zprofile", ".zshrc", ".zlogin", ".bash_profile", ".profile", ".bashrc"):
+            (home / profile).write_text(f'export PATH="{real}:$PATH"\nexport PROFILE_READ="$PROFILE_READ {profile}"\n')
+        env["HOME"] = str(home)
+        unguarded = {key: value for key, value in env.items() if key not in ("ZDOTDIR", "BASH_ENV", "ENV")}
+        ours, theirs = socket.socketpair()  # Node hands commands a socket as stdin; bash then looks for ~/.bashrc.
+        self.addCleanup(ours.close)
+        self.addCleanup(theirs.close)
+        shells = {"zsh": (["-lc"], ["-c"], ["-lic"]), "bash": (["-lc"], ["-c"])}
+        for shell, modes in shells.items():
+            if not shutil.which(shell):
+                continue
+            for flags in modes:
+                with self.subTest(shell=shell, flags=flags):
+                    for name in ("gh", "git"):
+                        found = self.call(env, work, shell, *flags, f"command -v {name}; echo $PROFILE_READ")
+                        self.assertEqual(found.stdout.splitlines()[0], str(bench.SHIMS / name), found.stdout + found.stderr)
+                    piped = subprocess.run([shell, *flags, "command -v gh"], cwd=work, env=env, stdin=theirs,
+                                           capture_output=True, text=True, timeout=60)
+                    self.assertEqual(piped.stdout.strip(), str(bench.SHIMS / "gh"), piped.stderr)
+                    if flags == ["-lc"]:  # The user's own profile still ran, and without the guard it wins.
+                        self.assertIn("profile", found.stdout)
+                        hostile = self.call(unguarded, work, shell, *flags, "command -v gh")
+                        self.assertEqual(hostile.stdout.strip(), str(real / "gh"))
+        if shutil.which("zsh"):  # A profile that moves ZDOTDIR is followed, and the guard comes back after it.
+            custom = home / "zsh"
+            custom.mkdir()
+            (home / ".zshenv").write_text(f'export ZDOTDIR="{custom}"\n')
+            (custom / ".zprofile").write_text(f'export PATH="{real}:$PATH"\nexport PROFILE_READ=custom\n')
+            found = self.call(env, work, "zsh", "-lc", "command -v gh; echo $PROFILE_READ; echo $ZDOTDIR")
+            self.assertEqual(found.stdout.split(), [str(bench.SHIMS / "gh"), "custom", env["ZDOTDIR"]], found.stderr)
 
 
 if __name__ == "__main__":
