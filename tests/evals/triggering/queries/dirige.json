@@ -1,0 +1,145 @@
+{
+  "skill": "dirige",
+  "queries": [
+    {
+      "id": "dirige-csv-subagentes",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Necesito exportar el reporte de ventas a CSV. Son tres partes: un módulo nuevo `reportes/exportar.py`, el subcomando `exportar` en `reportes/__main__.py` y pruebas en `tests/test_exportar.py`. Reparte el trabajo entre subagentes, integra lo que entreguen y deja la suite pasando antes de avisarme."
+    },
+    {
+      "id": "dirige-filtro-fechas-de-punta-a-punta",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Quiero un filtro por rango de fechas en el reporte: hay que tocar `reportes/datos.py` para filtrar, `reportes/reporte.py` para recalcular los totales, el parser de `reportes/__main__.py` con `--desde` y `--hasta`, y actualizar el README. Llévalo de principio a fin: implementación, integración de las partes y verificación con las pruebas."
+    },
+    {
+      "id": "dirige-migracion-sqlite-agentes",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Coordina con agentes la migración de `reportes/datos.py`: hoy las ventas son una lista en memoria y deben salir de un archivo SQLite `ventas.db`. Un agente puede encargarse del esquema y la carga, otro de adaptar `generar_reporte` y otro de las pruebas. Tú integras y compruebas que `python3 -m reportes resumen` sigue dando el mismo total."
+    },
+    {
+      "id": "dirige-tres-cambios-rama-lista",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Tengo tres cambios relacionados para esta rama: agregar la columna `descuento` a cada venta, mostrar el total con y sin descuento en el resumen, y cubrir ambos casos con pruebas. Ya está decidido cómo debe quedar. Encárgate de todo hasta dejar la rama lista para abrir el PR, con las pruebas ejecutadas y el resultado a la vista."
+    },
+    {
+      "id": "dirige-verbo-en-passant",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Dirige tú este cambio con tus agentes: el comando `resumen` debe aceptar `--formato json` además del texto actual. Eso implica un serializador nuevo en `reportes/reporte.py`, la opción en `reportes/__main__.py` y pruebas para los dos formatos. Delegas, integras y verificas; yo solo quiero el informe final."
+    },
+    {
+      "id": "dirige-bugs-en-paralelo",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Hay dos fallos independientes que quiero cerrar hoy: el total del resumen redondea mal cuando hay céntimos en `reportes/reporte.py`, y `reportes/datos.py` acepta ventas con unidades negativas. Lanza un agente para cada arreglo en paralelo, cada uno con su prueba de regresión, y luego junta ambos cambios y confirma que la suite completa pasa."
+    },
+    {
+      "id": "dirige-delegar-e-integrar",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Implementa el agrupamiento del reporte por cliente y por producto. Delega cada agrupamiento a un agente distinto para que no se pisen (`reportes/por_cliente.py` y `reportes/por_producto.py`), y ocúpate tú de conectar ambos al subcomando `resumen --agrupar` y de verificar el conjunto antes de entregarme el resultado."
+    },
+    {
+      "id": "dirige-en-pagination-workers",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "I need paginated output for the sales report. That means a `--page` and `--page-size` option in `reportes/__main__.py`, slicing logic in `reportes/reporte.py`, and tests for the boundaries. Split it across subagents, integrate their work yourself and verify everything with the test suite before you report back."
+    },
+    {
+      "id": "dirige-en-end-to-end-currency",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Please carry this multi-part change through to the end: add a `moneda` field to each sale in `reportes/datos.py`, convert totals to a single currency in `reportes/reporte.py` using a fixed rate table, update the README examples, and add tests. The design is settled; I want it implemented, integrated and verified, not just drafted."
+    },
+    {
+      "id": "dirige-en-coordinate-refactor",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Coordinate a refactor with your agents: `reportes/__main__.py` has grown to mix argument parsing, data loading and printing. Have one agent extract the parser into `reportes/cli.py`, another move the printing into `reportes/salida.py`, then integrate both, run the tests and tell me what changed and what you verified."
+    },
+    {
+      "id": "dirige-neg-revisar-diff",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "revisa",
+      "why": "Pide una revisión independiente de un cambio ya hecho, no coordinar una implementación.",
+      "query": "Ya terminé el cambio de la exportación a CSV en la rama `feat/exportar-csv`. Antes de abrir el PR quiero una revisión independiente del diff contra `main`: busca errores en `reportes/exportar.py`, casos que las pruebas no cubren y cualquier archivo fuera del diff que se haya roto. No implementes nada nuevo."
+    },
+    {
+      "id": "dirige-neg-cuestionar-plan",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "idea",
+      "why": "El plan aún no está decidido: pide cuestionarlo, no ejecutarlo.",
+      "query": "Mi plan es reemplazar la lista en memoria de `reportes/datos.py` por una base SQLite y de paso añadir caché de resultados. Antes de escribir una sola línea, cuestiona este plan: ¿hace falta la caché?, ¿SQLite es demasiado para este tamaño de datos?, ¿qué decisiones me faltan por tomar? No empieces a implementar."
+    },
+    {
+      "id": "dirige-neg-cambio-trivial",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Una sola edición trivial: no hay partes que coordinar ni integrar.",
+      "query": "En `reportes/__main__.py` el texto de ayuda del subcomando dice «Muestra el total de vantas», con una errata. Corrige solo esa palabra a «ventas» en ese archivo. Es un cambio de una línea, no hace falta nada más ni tocar otros archivos."
+    },
+    {
+      "id": "dirige-neg-pantalla-ui",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "ui-design",
+      "why": "Trabajo de interfaz sobre tokens y un componente, no un cambio de varias partes coordinado con agentes.",
+      "query": "Quiero rediseñar la tarjeta de resumen del panel web de reportes, el componente `TarjetaTotal`. Ahora usa colores escritos a mano y espaciados distintos en cada sitio; debe apoyarse en los tokens de `tema/tokens.css` y verse bien en móvil. Es solo ese componente y su estilo."
+    },
+    {
+      "id": "dirige-neg-recuerda-convencion",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "Pide guardar una convención para sesiones futuras; no hay implementación.",
+      "query": "Recuerda que en este proyecto los cambios de varias partes siempre se integran en una rama `integracion/<tema>` antes de ir a `main`, y que las pruebas se corren con `python3 -m unittest discover -s tests`. Guárdalo para que las próximas sesiones lo sepan sin que tenga que repetirlo."
+    },
+    {
+      "id": "dirige-neg-que-sabemos-migracion",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "Pregunta por contexto ya guardado; solo lectura.",
+      "query": "Antes de decidir nada sobre la base de datos: ¿qué sabemos de cómo se coordinó la última migración de datos en este proyecto? Creo que quedaron anotadas un par de decisiones sobre el orden de los pasos y quién integraba. Recupera lo que haya guardado y resúmemelo; no cambies nada."
+    },
+    {
+      "id": "dirige-neg-explicar-flujo",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Pide una explicación de código existente, sin cambios que coordinar.",
+      "query": "Explícame cómo fluye una venta desde `reportes/datos.py` hasta el total que imprime `python3 -m reportes resumen`: qué funciones intervienen y en qué orden. Solo quiero entenderlo antes de una reunión; no modifiques ningún archivo ni propongas un plan de trabajo."
+    },
+    {
+      "id": "dirige-neg-en-recheck-pr-fixes",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "revisa",
+      "why": "Re-checking fixes on an existing PR is review work, not coordinated implementation.",
+      "query": "The reviewer flagged two problems on my open PR for the CSV export: quoting of fields with commas and a missing test for empty input. I pushed fixes in the last two commits. Adversarially re-check just those fixes against the original findings and tell me whether they actually hold. Do not add features."
+    },
+    {
+      "id": "dirige-neg-en-undecided-feature",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "idea",
+      "why": "Decisions are unresolved and the user asks to be challenged before any build.",
+      "query": "I'm thinking about letting users schedule the sales report by email every Monday, but I haven't decided where the schedule lives, what happens when sending fails, or whether this belongs in this tool at all. Challenge the idea and help me pin down those decisions before anyone builds anything."
+    },
+    {
+      "id": "dirige-neg-en-single-rename",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": null,
+      "why": "A single small edit in one file: nothing to split, delegate or integrate.",
+      "query": "In `reportes/reporte.py` there is a local variable called `tot` inside `generar_reporte`. Rename it to `total` within that one function so it reads better. That's the whole change: one file, one function, no behaviour change and no new tests needed."
+    }
+  ]
+}

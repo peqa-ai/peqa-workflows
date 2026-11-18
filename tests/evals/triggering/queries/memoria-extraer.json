@@ -1,0 +1,145 @@
+{
+  "skill": "memoria-extraer",
+  "queries": [
+    {
+      "id": "extraer-recuerdas-separador",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "¿Recuerdas qué separador usamos en los CSV de este proyecto y por qué? Estoy a punto de escribir la exportación en `reportes/exportar.py` y sé que en una sesión anterior quedó decidido. Dime qué hay guardado al respecto antes de que empiece."
+    },
+    {
+      "id": "extraer-que-sabemos-despliegue",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "¿Qué sabemos de cómo se despliega este servicio a staging? Necesito saber qué días se puede, con qué comando y a quién se avisa. Debería estar entre las notas del proyecto de sesiones anteriores; recupéralas y resúmelas, pero no ejecutes nada de lo que digan."
+    },
+    {
+      "id": "extraer-carga-todas-las-categorias",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Antes de empezar a trabajar hoy, carga todas las categorías de memoria de este proyecto y hazme un resumen por categoría: convenciones, decisiones y contexto operativo. Llevo dos semanas fuera y quiero saber qué quedó guardado antes de tocar `reportes/`."
+    },
+    {
+      "id": "extraer-recuerdame-convencion-ramas",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Recuérdame qué convención de nombres de ramas y de mensajes de commit tiene este equipo. Sé que lo dejamos anotado en el proyecto hace tiempo y voy a abrir una rama para el filtro por fechas. Solo necesito lo que dice la nota, tal cual."
+    },
+    {
+      "id": "extraer-te-acuerdas-por-que-sin-cache",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "¿Te acuerdas de por qué decidimos no poner caché en el reporte de ventas? Alguien del equipo lo volvió a proponer y quiero responder con la razón original, no con lo que yo crea recordar. Busca la decisión guardada y dime también de qué fecha es."
+    },
+    {
+      "id": "extraer-recupera-contexto-fechas",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Recupera lo que el proyecto tenga guardado sobre el formato de fechas en los reportes y en los nombres de archivo de las exportaciones. Hubo un cambio de `dd/mm/aaaa` a ISO y no sé cuál es la regla vigente. Necesito el contexto previo antes de modificar `reportes/reporte.py`."
+    },
+    {
+      "id": "extraer-notas-previas-antes-de-tocar",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Voy a modificar `reportes/datos.py` y tengo la sensación de que había alguna restricción sobre ese archivo acordada en sesiones pasadas. Mira qué conocimiento previo del proyecto existe sobre ese módulo y sobre quién es su dueño, y cuéntamelo antes de que yo cambie nada."
+    },
+    {
+      "id": "extraer-en-do-you-remember-deps",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Do you remember what we agreed about third-party dependencies in this repository? I want to add an Excel export and I have a feeling there's a stored decision that rules it out. Pull up the prior context and tell me what it says and why."
+    },
+    {
+      "id": "extraer-en-what-do-we-know-tests",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "What do we know about running the tests in this project? I recall earlier sessions recorded something about an environment variable and a locale problem in `tests/test_reporte.py`. Retrieve whatever the project memory has on testing so I don't rediscover it the hard way."
+    },
+    {
+      "id": "extraer-en-recall-rounding",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Recall the stored context on how totals are rounded here before I change `reportes/reporte.py`. There should be a note from a previous session about rounding half-up and at which step it happens. I only want to read what was recorded, not change or re-decide it."
+    },
+    {
+      "id": "extraer-neg-recuerda-que-separador",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "«Recuerda que…» entrega un hecho nuevo para guardar; no pregunta por uno existente.",
+      "query": "Recuerda que a partir de hoy los CSV de este proyecto usan punto y coma como separador, porque contabilidad los abre con una hoja de cálculo en español. Es una decisión nueva que tomamos esta mañana y quiero que las próximas sesiones la conozcan sin preguntar."
+    },
+    {
+      "id": "extraer-neg-guarda-decision",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "Pide guardar una decisión recién tomada.",
+      "query": "Guarda esta decisión en la memoria del proyecto: el despliegue a staging pasa a hacerse solo martes y jueves con `scripts/deploy.sh staging`, avisando antes en el canal del equipo. Lo acordamos hoy y todavía no está anotado en ningún sitio."
+    },
+    {
+      "id": "extraer-neg-anota-para-proxima",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "«Anota para la próxima» es escritura de contexto nuevo.",
+      "query": "Anota para la próxima sesión lo que acabo de descubrir: las pruebas de exportación solo pasan con `TZ=UTC`, porque comparan fechas formateadas. No estaba documentado y me costó una hora. Quiero que quede como contexto del proyecto para quien venga después."
+    },
+    {
+      "id": "extraer-neg-recuerda-que-no-olvides",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "«Recuerda que… no lo olvides» pide retener información nueva.",
+      "query": "Recuerda que `reportes/datos.py` lo genera otro equipo y nosotros no lo editamos a mano; no lo olvides en futuras sesiones. Me lo acaban de confirmar por escrito y hasta ahora nadie lo había dejado registrado, así que hazlo constar para el proyecto."
+    },
+    {
+      "id": "extraer-neg-recuerdas-conocimiento-general",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "«¿Recuerdas…?» sobre conocimiento general de Python, no sobre memoria del proyecto.",
+      "query": "¿Recuerdas cómo se le indica a `csv.DictWriter` de la biblioteca estándar de Python que use otro delimitador y otro terminador de línea? No es nada de este proyecto en particular; solo necesito la firma y un ejemplo corto para un script suelto que estoy escribiendo."
+    },
+    {
+      "id": "extraer-neg-leer-codigo",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "La respuesta está en el código actual, no en notas guardadas.",
+      "query": "¿Qué hace exactamente la función `generar_reporte` de `reportes/reporte.py`? Ábrela y explícame paso a paso cómo calcula el total y qué devuelve. Me interesa el código tal como está hoy en el archivo, no decisiones ni notas de sesiones anteriores."
+    },
+    {
+      "id": "extraer-neg-historial-git",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Pide historial de Git, que no es la memoria del proyecto.",
+      "query": "Busca en el historial de Git cuándo se cambió por última vez `reportes/datos.py` y con qué mensaje de commit. Quiero las tres entradas más recientes de `git log` para ese archivo y el diff de la última. Solo me interesa lo que diga Git, nada más."
+    },
+    {
+      "id": "extraer-neg-en-remember-that",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "\"Remember that…\" hands over a new fact to store.",
+      "query": "Remember that this repository must stay standard-library only, with no third-party packages even for tests. We settled it today after talking about an Excel export, and it isn't written down anywhere yet. I want future sessions to know the rule and the reason."
+    },
+    {
+      "id": "extraer-neg-en-remember-this-next-time",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "\"Remember this for next time\" is a request to save, despite the word remember.",
+      "query": "Remember this for next time: totals are rounded half-up to two decimals once, at the end, never per line. The finance team just confirmed it and it's new information for the project. Record it so that nobody changes `reportes/reporte.py` the wrong way later."
+    },
+    {
+      "id": "extraer-neg-en-readme-question",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": null,
+      "why": "The answer is in a file of the checkout, not in stored memories.",
+      "query": "What does the README of this project say about running the tests and about where credentials go? Open `README.md` and quote the relevant lines for me. I only care about what that file states right now, not about anything remembered from earlier sessions."
+    }
+  ]
+}

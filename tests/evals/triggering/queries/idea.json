@@ -1,0 +1,145 @@
+{
+  "skill": "idea",
+  "queries": [
+    {
+      "id": "idea-cuestionar-cache",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Estoy pensando en añadir una caché en disco al reporte de ventas para no recalcular los totales en cada ejecución. Antes de hacerlo quiero que cuestiones la idea: ¿resuelve un problema real con el volumen que manejamos?, ¿cómo se invalida?, ¿qué pasa si el archivo queda corrupto? Hazme las preguntas que haga falta."
+    },
+    {
+      "id": "idea-decisiones-abiertas-multiusuario",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Queremos que el reporte se pueda filtrar por vendedor, pero no tengo claro si el vendedor es un campo de la venta o una tabla aparte, ni quién puede ver las ventas de otros, ni si esto cambia el formato del CSV que ya exportamos. Ayúdame a cerrar esas decisiones antes de que alguien empiece a programar."
+    },
+    {
+      "id": "idea-plan-tecnico-a-prueba",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Este es mi plan técnico: mover `reportes/datos.py` a SQLite, exponer el reporte con un servidor HTTP mínimo y dejar la línea de comandos como cliente de ese servidor. Ponlo a prueba desde producto e implementación: qué supuestos son débiles, qué alternativa más simple estoy ignorando y qué tendría que decidir primero."
+    },
+    {
+      "id": "idea-vale-la-pena-la-funcionalidad",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Un cliente pidió que el resumen muestre una proyección de ventas del mes siguiente. No estoy seguro de que valga la pena ni de cómo se calcularía con los datos que hay en `reportes/datos.py`. Discútemelo: para quién es, qué decisión tomaría con ese número y qué versión mínima tendría sentido."
+    },
+    {
+      "id": "idea-dos-enfoques-sin-decidir",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Para la exportación tengo dos enfoques y no me decido: generar el CSV con el módulo `csv` de la biblioteca estándar o introducir una dependencia que también escriba Excel. Cada uno cambia quién puede abrir el archivo y cuánto mantenimiento asumimos. Cuestióname ambos y dime qué necesito aclarar para elegir."
+    },
+    {
+      "id": "idea-requisitos-vagos",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Me pidieron «hacer el reporte más útil para gerencia» y eso es todo lo que tengo. No quiero inventar funcionalidades a ciegas en `reportes/reporte.py`. Ayúdame a convertir ese encargo en algo ejecutable: pregúntame lo que falte sobre el usuario, el uso y los límites hasta que haya una decisión clara."
+    },
+    {
+      "id": "idea-antes-de-coordinar",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Voy a encargar un cambio grande al reporte (alertas cuando las ventas de un producto caen), pero hay huecos: no sé qué umbral define «caer», ni si la alerta se imprime o se envía, ni cada cuánto se evalúa. Antes de repartir el trabajo necesito resolver esas preguntas; reta lo que propongo y dime qué falta decidir."
+    },
+    {
+      "id": "idea-en-poke-holes-plugin-system",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "My approach for custom report formats is a plugin system: each format is a Python module dropped into `reportes/formatos/` and discovered at startup. Poke holes in this before I commit to it. Is discovery worth it for three formats? What breaks when a module fails to import? What should I decide first?"
+    },
+    {
+      "id": "idea-en-unresolved-auth",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "We want to put the sales report behind a login, but nothing is settled: whether accounts live in a local file or an external provider, whether there are roles, and what a read-only user should see. I need these product and implementation decisions resolved before work starts. Ask me what you need."
+    },
+    {
+      "id": "idea-en-challenge-rewrite",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "I'm about to propose rewriting the report generator as an async pipeline so that exports and summaries run concurrently. Challenge that plan hard: is there a real bottleneck in `reportes/reporte.py`, what does async cost us in testing, and is there a smaller change that gets the same benefit?"
+    },
+    {
+      "id": "idea-neg-implementar-decidido",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "dirige",
+      "why": "Todo está decidido y se pide llevar un cambio de varias partes hasta la verificación.",
+      "query": "Ya está todo decidido para la exportación: CSV con `;` como separador, columnas `fecha, cliente, producto, unidades, total`, módulo `reportes/exportar.py`, subcomando `exportar` y pruebas. No hay nada que discutir. Reparte la implementación entre agentes, intégrala y verifica que la suite pasa."
+    },
+    {
+      "id": "idea-neg-revisar-codigo",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "revisa",
+      "why": "Pide cuestionar código ya escrito (revisión), no una idea o un plan.",
+      "query": "Terminé la función `exportar_csv` y sus pruebas en la rama `feat/exportar-csv`. Quiero que un revisor independiente intente demostrar que el cambio no cumple lo que promete: revisa el diff contra `main`, el manejo de comillas y los casos vacíos, y dime qué hallazgos bloquean el merge."
+    },
+    {
+      "id": "idea-neg-disenar-pantalla",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "ui-design",
+      "why": "El encargo es construir una pantalla con el sistema de diseño, sin decisiones de producto abiertas.",
+      "query": "Construye la pantalla de inicio del panel de reportes: una cabecera, tres tarjetas con los totales del mes y una tabla de ventas recientes. El contenido y los datos ya están definidos; usa los tokens de color y espaciado de `tema/tokens.css` y los componentes que ya existen en `componentes/`."
+    },
+    {
+      "id": "idea-neg-recuerda-decision",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "La decisión ya se tomó; solo pide guardarla para el futuro.",
+      "query": "Recuerda que después de discutirlo decidimos no añadir caché al reporte: el cálculo tarda menos de un segundo con los datos actuales y la invalidación complicaba todo. Guarda esa decisión y el motivo para que en otra sesión nadie vuelva a proponerla sin datos nuevos."
+    },
+    {
+      "id": "idea-neg-recuerdas-decision",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-extraer",
+      "why": "Pregunta por una decisión pasada ya registrada; no pide volver a discutirla.",
+      "query": "¿Recuerdas qué decidimos sobre la idea de añadir caché al reporte de ventas? Sé que lo discutimos hace unas semanas y quedó anotado el motivo. No quiero reabrir la discusión, solo necesito la decisión y su razón tal como quedaron guardadas para citarlas en un documento."
+    },
+    {
+      "id": "idea-neg-pregunta-factual",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Pregunta factual sobre una biblioteca; no hay idea ni decisión que cuestionar.",
+      "query": "Tengo una duda concreta sobre el módulo `csv` de Python: cuando uso `csv.DictWriter` con `extrasaction=\"ignore\"`, ¿qué ocurre con las claves del diccionario que no están en `fieldnames`, y qué diferencia hay con el valor por defecto? Solo necesito la explicación, no estoy decidiendo ningún diseño."
+    },
+    {
+      "id": "idea-neg-tarea-pequena-decidida",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Cambio pequeño y completamente especificado: nada material sin resolver.",
+      "query": "Añade a `reportes/reporte.py` una función `total_unidades(filas)` que sume el campo `unidades` de cada fila y devuelva un entero, con una prueba en `tests/test_reporte.py` para una lista vacía y otra con dos filas. Está todo especificado; no necesito alternativas ni preguntas."
+    },
+    {
+      "id": "idea-neg-en-carry-through",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "dirige",
+      "why": "The approach is settled; the request is to implement, integrate and verify a multi-part change.",
+      "query": "The approach is agreed and written down: add `--desde` and `--hasta` to the CLI, filter in `reportes/datos.py`, recompute totals in `reportes/reporte.py`, and cover it with tests. Please don't reopen the design. Hand the pieces to subagents, integrate them and verify the result end to end."
+    },
+    {
+      "id": "idea-neg-en-review-diff",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "revisa",
+      "why": "Challenging finished code is a code review, not challenging an idea.",
+      "query": "I'd like an independent code review of the branch `feat/date-filter` before it merges. Look at the diff against `main`, try to break the date parsing with malformed input, check whether anything outside the diff depends on the old signature of `generar_reporte`, and list findings by severity."
+    },
+    {
+      "id": "idea-neg-en-explain-concept",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": null,
+      "why": "A general explanation request with no plan or decision at stake.",
+      "query": "Can you explain, in general terms, the difference between optimistic and pessimistic locking in databases, with a short example of each? I'm reading about it for a course and I'm not applying it to this project or choosing between them for anything right now."
+    }
+  ]
+}
