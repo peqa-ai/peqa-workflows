@@ -1,6 +1,6 @@
 # PEQA workflows
 
-Seis skills para decidir, implementar con agentes, diseñar interfaces, revisar y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
+Siete skills para decidir, implementar con agentes, diseñar interfaces, revisar, redactar documentos formales en lenguaje claro y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
 
 `0.23.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
@@ -63,6 +63,7 @@ En T3 se usan las capacidades de **Orchestrator V2** según las reglas del entor
 | [revisa](skills/revisa/SKILL.md) | "Busca fallos materiales antes de cerrar este PR". |
 | [memoria-guardar](skills/memoria-guardar/SKILL.md) | "Guarda cómo desplegamos este servicio". |
 | [memoria-extraer](skills/memoria-extraer/SKILL.md) | "Recupera lo que sabemos de DevOps en este proyecto". |
+| [lenguaje-claro-formal-es](skills/lenguaje-claro-formal-es/SKILL.md) | "Revisa esta cotización antes de enviarla al cliente". |
 
 ## Diseño de interfaces
 
@@ -142,6 +143,16 @@ flowchart TD
 Si tienes activo otro skill de diseño de interfaces, como `frontend-design`, desactívalo o invoca este por su nombre. Varios skills con la misma descripción compiten, y cada sesión puede cargar uno distinto.
 
 [Pasos y referencias](skills/ui-design/SKILL.md) · [Escenarios probados](tests/ui-design-scenarios.md).
+
+## Documentos formales en lenguaje claro
+
+Desde `0.24.0`, `lenguaje-claro-formal-es` redacta o revisa en español documentos formales para clientes: propuestas, cotizaciones, informes, contratos y correos formales. Combina un registro profesional con las reglas de lenguaje claro de la norma ISO 24495-1 y la Guía panhispánica de lenguaje claro y accesible (RAE y ASALE, 2025).
+
+- **Registro formal:** trato de usted, la empresa por su nombre, sin coloquialismos, humor ni frases de venta. Un dato no se atribuye a un chat o una llamada; se cita la reunión formal con su fecha o se enuncia el hecho.
+- **Lenguaje claro:** lo importante primero, una idea por oración, voz activa con el actor nombrado, términos definidos y usados siempre igual, cifras y fechas exactas.
+- **Revisión final:** busca palabras que delatan un registro informal y comprueba que no cambiaron precios, alcance, fechas ni el sentido de tablas y diagramas.
+
+Complementa a `unslop`, un skill aparte que no forma parte de este plugin: `unslop` quita lo que suena a IA y este skill cuida el tono formal y el lenguaje claro. Incluye un resumen de esas reglas, así que funciona sin `unslop` instalado. [Reglas](skills/lenguaje-claro-formal-es/SKILL.md) · [Fuentes](skills/lenguaje-claro-formal-es/references/fuentes.md).
 
 ## Evidencia visual
 
@@ -292,7 +303,7 @@ Desde la versión 0.9.0, los skills se llaman `dirige`, `idea`, `revisa`, `memor
 
 En `0.16.0`, `memoria-recuerda` pasa a llamarse `memoria-guardar`, para que el nombre diga qué hace frente a `memoria-extraer`. Invócalo como `/peqa-workflows:memoria-guardar` en Claude Code o `$peqa-workflows:memoria-guardar` en Codex; el nombre anterior deja de existir y no hay alias. Pedir «guarda…» o «recuerda que…» lo activa; «¿recuerdas…?» o «¿qué sabemos de…?» activan `memoria-extraer`. Las notas guardadas no cambian de ruta, y el registro de uso agrupa los eventos antiguos bajo el nombre nuevo. Si Codex y Claude Code trabajan en el mismo repositorio, actualiza los dos: una versión anterior no lee el registro de uso con el nombre nuevo.
 
-Las versiones `0.5.x` a `0.8.x` usaban nombres como `peqa-dirige`; en `0.9.0` pasa a `dirige`. Las memorias y los contadores de revisión conservan sus rutas y datos. El registro opcional de uso sigue leyendo los nombres históricos y agrupa sus eventos bajo los nombres actuales. `ui-design`, añadido en `0.13.0`, no tiene nombre anterior.
+Las versiones `0.5.x` a `0.8.x` usaban nombres como `peqa-dirige`; en `0.9.0` pasa a `dirige`. Las memorias y los contadores de revisión conservan sus rutas y datos. El registro opcional de uso sigue leyendo los nombres históricos y agrupa sus eventos bajo los nombres actuales. `ui-design`, añadido en `0.13.0`, y `lenguaje-claro-formal-es`, añadido en `0.24.0`, no tienen nombre anterior.
 
 <details>
 <summary>Probar una copia local sin instalarla globalmente</summary>
@@ -332,4 +343,4 @@ Antes de añadir o modificar un skill, lee las [convenciones del proyecto](AGENT
 
 ## Fuentes
 
-La entrevista toma como referencia conceptual a [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias. `ui-design` parte de una revisión del skill [`frontend-design`](https://github.com/anthropics/claude-plugins-public/tree/main/plugins/frontend-design) de Anthropic y de otros skills de diseño, y de las pruebas registradas en [sus escenarios](tests/ui-design-scenarios.md). Sus medidas de contraste y de pantallas nativas citan WCAG, Apple y Android en [crítica](skills/ui-design/references/critique.md) y [pantallas nativas](skills/ui-design/references/native.md#fuentes). El empaquetado sigue las referencias de [OpenAI](https://developers.openai.com/plugins/build/plugins) y [Claude Code](https://code.claude.com/docs/en/plugins-reference); los contratos de T3 se citan en [herramientas del entorno](references/runtime-tools.md).
+La entrevista toma como referencia conceptual a [Matt Pocock](https://github.com/mattpocock/skills). Las instrucciones son propias. `ui-design` parte de una revisión del skill [`frontend-design`](https://github.com/anthropics/claude-plugins-public/tree/main/plugins/frontend-design) de Anthropic y de otros skills de diseño, y de las pruebas registradas en [sus escenarios](tests/ui-design-scenarios.md). Sus medidas de contraste y de pantallas nativas citan WCAG, Apple y Android en [crítica](skills/ui-design/references/critique.md) y [pantallas nativas](skills/ui-design/references/native.md#fuentes). `lenguaje-claro-formal-es` cita la norma ISO 24495-1, la Guía panhispánica y guías públicas de lenguaje claro en [sus fuentes](skills/lenguaje-claro-formal-es/references/fuentes.md). El empaquetado sigue las referencias de [OpenAI](https://developers.openai.com/plugins/build/plugins) y [Claude Code](https://code.claude.com/docs/en/plugins-reference); los contratos de T3 se citan en [herramientas del entorno](references/runtime-tools.md).
