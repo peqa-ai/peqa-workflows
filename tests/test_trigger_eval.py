@@ -49,7 +49,7 @@ class FakeProcess:
 
 class QuerySetTests(unittest.TestCase):
     def test_shipped_sets_are_valid_balanced_and_bilingual(self):
-        self.assertEqual(sorted(SETS), ["dirige", "idea", "memoria-extraer", "memoria-guardar"])
+        self.assertEqual(sorted(SETS), ["dirige", "idea", "lenguaje-claro-formal-es", "memoria-extraer", "memoria-guardar"])
         self.assertEqual(trigger.validate(SETS, SKILLS), [])
         for skill, queries in SETS.items():
             hits = [query for query in queries if query["should_trigger"]]

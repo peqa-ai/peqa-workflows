@@ -1,0 +1,145 @@
+{
+  "skill": "lenguaje-claro-formal-es",
+  "queries": [
+    {
+      "id": "lcf-propuesta-transportes",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Redacta una propuesta de servicios para Transportes Ejemplo S.A.: implementamos un sistema de seguimiento de flota en tres fases durante cuatro meses. Va dirigida a su director de operaciones, así que necesito registro profesional, frases cortas y una estructura que pueda leer en cinco minutos."
+    },
+    {
+      "id": "lcf-revisa-tono-cotizacion",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Revisa el tono de esta cotización antes de enviarla a Clínica Demo: «Por medio de la presente nos permitimos hacer de su conocimiento que el costo total ascendería a la suma de…». Quiero que suene profesional pero que se entienda a la primera, sin fórmulas antiguas ni frases de tres líneas."
+    },
+    {
+      "id": "lcf-informe-trimestral-claro",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Pasa a lenguaje claro este informe trimestral para la junta de Constructora Ficticia. Está lleno de voz pasiva, siglas sin explicar y párrafos de diez líneas. Mantén el registro formal, conserva las cifras tal cual y pon las conclusiones al principio para que sepan qué se les pide decidir."
+    },
+    {
+      "id": "lcf-contrato-mantenimiento",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Necesito un borrador de contrato de mantenimiento de software entre nuestra empresa y Ferretería Modelo: alcance, horas incluidas, tiempos de respuesta, precio mensual y terminación anticipada. Que sea formal y que el cliente entienda cada cláusula sin abogado; no inventes leyes ni artículos concretos."
+    },
+    {
+      "id": "lcf-correo-retraso-entrega",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Escríbeme un correo formal para Distribuidora Genérica explicando que la entrega del módulo de facturación se retrasa dos semanas por un cambio en su pasarela de pagos. Debe disculparse sin rodeos, dar la nueva fecha y decir qué necesitamos de ellos. Nada de tono de chat."
+    },
+    {
+      "id": "lcf-corregir-antes-de-enviar",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Mañana le envío la propuesta a Hotel Ejemplo y antes quiero que la leas entera y la corrijas: hay frases larguísimas, mezcla de tú y usted, mayúsculas en cada cargo y una tabla de precios sin explicar. Déjala lista para entregar, con un registro profesional coherente de principio a fin."
+    },
+    {
+      "id": "lcf-cotizacion-desde-notas",
+      "lang": "es",
+      "should_trigger": true,
+      "query": "Con estas notas sueltas arma la cotización formal para Academia Demo: 40 horas de capacitación, dos instructores, material incluido, 30 % de anticipo y validez de 15 días. Va dirigida a la directora académica; quiero un resumen al inicio y que cualquiera la entienda sin volver a leerla."
+    },
+    {
+      "id": "lcf-en-proposal-final-in-spanish",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "I need to send a formal proposal to a client in Mexico, Logística Ejemplo, for a warehouse inventory app. Below are my English notes on scope, timeline and pricing. Please write the final proposal in Spanish, in a professional register and plain language, ready for their operations manager."
+    },
+    {
+      "id": "lcf-en-review-spanish-report",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "A junior colleague wrote this audit report in Spanish for our client Clínica Demo, and I don't trust the tone: it feels stiff and some sentences run on forever. Can you review it and make it clear and professional in Spanish before I send it to the client on Friday?"
+    },
+    {
+      "id": "lcf-en-formal-email-spanish",
+      "lang": "en",
+      "should_trigger": true,
+      "query": "Draft a formal email in Spanish to the procurement team at Seguros Ficticios explaining that our quote expires on the 30th and that prices go up 8% after that. Keep it courteous and easy to follow, usted throughout, no marketing fluff. I'll paste it into Outlook as is."
+    },
+    {
+      "id": "lcf-neg-mensaje-colega",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Mensaje informal a una colega; no es un documento formal para un cliente.",
+      "query": "Escríbele un mensaje rápido por Slack a Marta, mi compañera de equipo, para decirle que hoy no llego a la reunión de las cuatro y que me pase las notas después. Algo relajado y corto, como le hablaría normalmente, con un emoji si queda bien."
+    },
+    {
+      "id": "lcf-neg-post-blog-tono-ia",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "Quitar el tono de IA a un texto personal e informal; no hay cliente ni registro formal.",
+      "query": "Este post para mi blog personal sobre las vacaciones en la montaña suena a texto generado por IA: demasiados «además», listas de tres y frases grandilocuentes. Quítale ese tono y déjalo cercano y desenfadado, como si se lo contara a un amigo en una cena."
+    },
+    {
+      "id": "lcf-neg-traducir-al-ingles",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": null,
+      "why": "El documento formal se entrega en inglés; el skill cubre documentos en español.",
+      "query": "Traduce al inglés esta propuesta que ya tenemos aprobada en español para un cliente nuevo de Canadá, Ejemplo Holdings. El documento final tiene que estar en inglés de negocios, con el mismo orden de secciones y la misma tabla de precios, porque allí nadie lee español."
+    },
+    {
+      "id": "lcf-neg-revisar-pr-cotizaciones",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "revisa",
+      "why": "Es una revisión de código, aunque el código genere cotizaciones.",
+      "query": "Revisa el PR de la rama `feat/plantilla-cotizacion` antes del merge: añade el generador de cotizaciones en PDF y sus pruebas. Busca errores en el cálculo de impuestos, en el redondeo y en las cotizaciones sin líneas, y dime qué hallazgos bloquean la integración."
+    },
+    {
+      "id": "lcf-neg-conviene-ofertar",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "idea",
+      "why": "Pide decidir si conviene ofertar y con qué alcance, no redactar el documento.",
+      "query": "Un posible cliente, Panadería Modelo, nos pidió propuesta para una app de pedidos, pero no sé si nos conviene: su presupuesto es bajo y el alcance que describen es enorme. Antes de escribir nada, cuestióname si debemos presentarnos y qué alcance mínimo tendría sentido ofrecer."
+    },
+    {
+      "id": "lcf-neg-guardar-convencion-tono",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "memoria-guardar",
+      "why": "Pide guardar una convención del proyecto, no redactar ni revisar un documento.",
+      "query": "Recuerda que en este proyecto todos los documentos para clientes se escriben de usted, con fechas como «9 de noviembre de 2026» y sin mayúsculas en los cargos. Guarda esa convención para que las próximas sesiones la apliquen sin que tenga que repetirla."
+    },
+    {
+      "id": "lcf-neg-maquetar-precios",
+      "lang": "es",
+      "should_trigger": false,
+      "expected": "ui-design",
+      "why": "Construir una página de la interfaz; los textos ya están aprobados.",
+      "query": "Maqueta la página de precios del sitio: tres planes en tarjetas, el intermedio destacado, una tabla comparativa debajo y un bloque de preguntas frecuentes. Usa los tokens de `tema/tokens.css` y los componentes que ya existen; los textos ya están aprobados por el cliente."
+    },
+    {
+      "id": "lcf-neg-en-english-proposal",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": null,
+      "why": "A formal client document, but written in English for an English-speaking client.",
+      "query": "Write a formal proposal in English for Example Logistics Ltd., a client in Ohio, covering a fleet tracking rollout in three phases over four months. Professional tone, executive summary up front and a clear pricing table. Nobody on their side reads Spanish."
+    },
+    {
+      "id": "lcf-neg-en-casual-text-friend",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": null,
+      "why": "A casual personal message in Spanish, not a formal document for a client.",
+      "query": "Help me write a quick, friendly text in Spanish to my friend Diego saying I can't make it to his birthday dinner on Saturday and that I'll take him out for tacos next week instead. Keep it casual and warm, the way friends text each other."
+    },
+    {
+      "id": "lcf-neg-en-review-rounding-diff",
+      "lang": "en",
+      "should_trigger": false,
+      "expected": "revisa",
+      "why": "Challenging finished code is a code review, even if it produces quotes.",
+      "query": "Please review the diff on `fix/invoice-rounding` against `main`. It changes how the quote generator rounds VAT on each line. Try to break it with zero-quantity lines and large discounts, and list findings by severity before I merge it."
+    }
+  ]
+}

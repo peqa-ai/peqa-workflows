@@ -201,11 +201,12 @@ class UsageTests(unittest.TestCase):
     def test_all_supported_skills_and_runtimes_are_accepted(self):
         self.ok("enable")
         for skill in ("dirige", "idea", "revisa",
-                      "memoria-guardar", "memoria-extraer", "ui-design"):
+                      "memoria-guardar", "memoria-extraer", "ui-design",
+                      "lenguaje-claro-formal-es"):
             for runtime in ("t3-codex", "t3-claude", "orca-codex", "orca-claude",
                             "codex", "claude"):
                 self.assertEqual(self.record(skill=skill, runtime=runtime)[0], 0)
-        self.assertEqual(self.ok("status")["event_count"], 36)
+        self.assertEqual(self.ok("status")["event_count"], 42)
 
     def test_invalid_input_cannot_persist_or_echo_private_values(self):
         for options in ({"invocation": "secret-account-session"},

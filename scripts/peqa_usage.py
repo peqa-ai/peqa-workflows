@@ -31,7 +31,7 @@ else:
 
 
 SKILLS = ("dirige", "idea", "revisa", "memoria-guardar",
-          "memoria-extraer", "ui-design")
+          "memoria-extraer", "ui-design", "lenguaje-claro-formal-es")
 # Historical event names remain readable; new records use canonical names only.
 # Only the skills published before 0.9.0 carried the "peqa-" prefix, and 0.16.0
 # renamed memoria-recuerda to memoria-guardar.

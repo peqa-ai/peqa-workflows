@@ -1,0 +1,4 @@
+interface:
+  display_name: "PEQA lenguaje claro formal"
+  short_description: "Redacta y revisa documentos formales en lenguaje claro"
+  default_prompt: "Usa $lenguaje-claro-formal-es para redactar o revisar este documento formal en español."
