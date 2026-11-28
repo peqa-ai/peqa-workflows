@@ -2,7 +2,7 @@
 
 Siete skills para decidir, implementar con agentes, diseñar interfaces, revisar, redactar documentos formales en lenguaje claro y conservar contexto entre sesiones. Funcionan en **Codex y Claude Code**, también dentro de **T3 Code** y de **Orca**, con integración propia en ambos. Se adaptan al proyecto donde los uses.
 
-`0.24.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
+`0.25.0` · Borrador público para revisión manual · [Licencia MIT](LICENSE)
 
 ## Para quién es
 
