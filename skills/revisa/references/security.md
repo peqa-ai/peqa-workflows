@@ -1,6 +1,6 @@
 # Seguridad dentro del review
 
-Incluye una revisión de seguridad proporcionada al cambio y su blast radius. Comprueba los controles aplicables en el código, configuración, dependencias y consumidores pertinentes. La evaluación declara qué se verificó en esa revisión; no certifica la aplicación ni el cumplimiento integral de OWASP o NIST.
+Esta referencia aplica de forma completa en revisiones de profundidad **`deep`**: comprueba los controles aplicables en el código, configuración, dependencias y consumidores pertinentes (OWASP Top 10, NIST SSDF, autenticación, autorización y aislamiento de tenants, concurrencia y condiciones de carrera, integridad de datos, secretos y dependencias). En revisiones **`lite`**, se omite la auditoría completa OWASP/NIST SSDF salvo que aparezca un defecto de seguridad obvio en el cambio; si aparece, se registra como hallazgo material, bloquea la aprobación y se documenta igual que en `deep`. La evaluación declara qué se verificó en esa revisión; no certifica la aplicación ni el cumplimiento integral de OWASP o NIST.
 
 ## Referencias y vigencia
 

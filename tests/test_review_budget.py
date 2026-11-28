@@ -203,6 +203,113 @@ class ReviewBudgetTests(unittest.TestCase):
         self.assertNotEqual(rc, 0)
         self.assertEqual(data['error'], 'LEDGER_ALREADY_EXISTS')
 
+    def test_depth_model_and_effort_persist_in_ledger_and_across_lifecycle(self):
+        self.initialize('change-depth', used=0)
+        rc, first = self.call('reserve', 'change-depth', '--head', 'a' * 40,
+                              '--depth', 'lite', '--model', 'Sol 6.2', '--effort', 'medium')
+        self.assertEqual(rc, 0, first)
+        self.assertEqual(first['depth'], 'lite')
+        self.assertEqual(first['model'], 'Sol 6.2')
+        self.assertEqual(first['effort'], 'medium')
+        rc, verified = self.call('verify', 'change-depth', '--head', 'a' * 40, '--token', first['token'])
+        self.assertEqual(rc, 0, verified)
+        self.assertEqual(verified['depth'], 'lite')
+        rc, claimed = self.call('claim', 'change-depth', '--head', 'a' * 40, '--token', first['token'])
+        self.assertEqual(rc, 0, claimed)
+        self.assertEqual(claimed['depth'], 'lite')
+        rc, finished = self.call('finish', 'change-depth', '--token', first['token'], '--status', 'completed')
+        self.assertEqual(rc, 0, finished)
+        self.assertEqual(finished['passes'][0]['depth'], 'lite')
+        self.assertEqual(finished['passes'][0]['model'], 'Sol 6.2')
+
+        self.initialize(PR, used=0)
+        rc, attached = self.call('attach', PR, '--from-id', 'change-depth')
+        self.assertEqual(rc, 0, attached)
+        self.assertEqual(attached['passes'][0]['depth'], 'lite')
+
+        rc, second = self.call('reserve', PR, '--head', 'b' * 40,
+                               '--depth', 'deep', '--model', 'Astra 6.2', '--effort', 'high')
+        self.assertEqual(rc, 0, second)
+        self.assertEqual(second['depth'], 'deep')
+        inspected = self.call('inspect', PR)[1]
+        self.assertEqual([p['depth'] for p in inspected['passes']], ['lite', 'deep'])
+        self.assertEqual([p['model'] for p in inspected['passes']], ['Sol 6.2', 'Astra 6.2'])
+
+    def test_invalid_depth_and_control_char_model_are_rejected(self):
+        self.initialize(PR, used=0)
+        bad_depth = subprocess.run(
+            [sys.executable, str(SCRIPT), 'reserve', '--repo', str(self.repo),
+             '--pr-url', PR, '--head', 'a' * 40, '--depth', 'full'],
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(bad_depth.returncode, 0)
+        rc, bad_model = self.call('reserve', PR, '--head', 'a' * 40, '--depth', 'deep', '--model', 'bad\nmodel')
+        self.assertNotEqual(rc, 0)
+        self.assertEqual(bad_model['error'], 'INVALID_MODEL')
+
+    def ledger_path(self):
+        return self.repo / '.git' / 'peqa' / 'reviews' / 'budget.json'
+
+    def test_ledger_written_before_depth_existed_keeps_working(self):
+        # Shape written by releases that knew nothing of depth, model or effort.
+        self.initialize(PR, used=1)
+        _, old = self.call('reserve', PR, '--head', 'a' * 40)
+        ledger = json.loads(self.ledger_path().read_text())
+        entry = next(iter(ledger['entries'].values()))
+        for item in entry['passes']:
+            self.assertFalse({'depth', 'model', 'effort'} & set(item))
+        self.assertNotIn('depth', old)
+
+        rc, verified = self.call('verify', PR, '--head', 'a' * 40, '--token', old['token'])
+        self.assertEqual((rc, verified), (0, {'valid': True, 'identity': verified['identity'], 'used': 2, 'limit': 3}))
+        rc, claimed = self.call('claim', PR, '--head', 'a' * 40, '--token', old['token'])
+        self.assertEqual(rc, 0, claimed)
+        self.assertNotIn('depth', claimed)
+        rc, finished = self.call('finish', PR, '--token', old['token'], '--status', 'completed')
+        self.assertEqual(rc, 0, finished)
+
+        rc, new = self.call('reserve', PR, '--head', 'b' * 40, '--depth', 'deep', '--model', 'Astra 6.2')
+        self.assertEqual(rc, 0, new)
+        self.assertEqual((new['used'], new['remaining']), (3, 0))
+        inspected = self.call('inspect', PR)[1]
+        self.assertEqual([item.get('depth') for item in inspected['passes']], [None, None, 'deep'])
+        self.assertEqual([item['status'] for item in inspected['passes']], ['imported', 'completed', 'reserved'])
+        self.assertEqual(self.call('reserve', PR, '--head', 'c' * 40, '--depth', 'lite')[1]['error'], 'BUDGET_EXHAUSTED')
+
+    def test_legacy_pr_number_ledger_migrates_without_new_fields(self):
+        directory = self.ledger_path().parent
+        directory.mkdir(parents=True)
+        self.ledger_path().write_text(json.dumps({'schema': 1, 'entries': {'pr-42': {
+            'identity': 'pr-42', 'pr_url': None, 'created_at': '2026-10-01T00:00:00+00:00',
+            'passes': [{'token': 'legacy-token', 'status': 'completed', 'head': 'a' * 40,
+                        'reserved_at': '2026-10-01T00:00:00+00:00'}]}}}))
+        rc, migrated = self.call('migrate', PR, '--from-id', 'pr-42')
+        self.assertEqual(rc, 0, migrated)
+        self.assertEqual(migrated['used'], 1)
+        rc, reserved = self.call('reserve', PR, '--head', 'b' * 40, '--depth', 'lite', '--effort', 'high')
+        self.assertEqual(rc, 0, reserved)
+        self.assertEqual([item.get('depth') for item in reserved['passes']], [None, 'lite'])
+        self.assertEqual(reserved['passes'][1]['effort'], 'high')
+        self.assertNotIn('model', reserved['passes'][1])
+
+    def test_empty_model_or_effort_records_nothing_and_bad_labels_do_not_consume(self):
+        self.initialize(PR, used=0)
+        rc, reserved = self.call('reserve', PR, '--head', 'a' * 40, '--depth', 'deep', '--model', '', '--effort', '   ')
+        self.assertEqual(rc, 0, reserved)
+        self.assertEqual(reserved['depth'], 'deep')
+        self.assertNotIn('model', reserved)
+        self.assertNotIn('effort', reserved)
+        self.assertFalse({'model', 'effort'} & set(reserved['passes'][0]))
+        for flag, value, code in (('--model', 'x' * 257, 'INVALID_MODEL'), ('--effort', 'hi\x7fgh', 'INVALID_EFFORT'),
+                                  ('--effort', 'a\tb', 'INVALID_EFFORT')):
+            rc, data = self.call('reserve', PR, '--head', 'b' * 40, flag, value)
+            with self.subTest(flag=flag, code=code):
+                self.assertNotEqual(rc, 0)
+                self.assertEqual(data['error'], code)
+        self.assertEqual(self.call('inspect', PR)[1]['used'], 1)
+        rc, trimmed = self.call('reserve', PR, '--head', 'b' * 40, '--model', '  Neon 4  ')
+        self.assertEqual((rc, trimmed['model']), (0, 'Neon 4'))
+
 
 if __name__ == '__main__':
     unittest.main()

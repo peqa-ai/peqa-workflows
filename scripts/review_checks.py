@@ -6,14 +6,21 @@ Public API:
     validate_report(report, repo) -> {"valid": bool, "errors": [safe codes]}.
     load_report(path) -> dict; rejects duplicate keys, symlinks and >1 MiB input.
 
-Report schema 1 has exactly: schema_version, language, recommendation, minimums,
-requester, reason, criteria, findings, tests, security, impact, scope, trace.
-criteria has requirements/tests/security/compatibility, each {status, evidence}.
-findings contains {id, material: bool, status, evidence}; tests contains
+Report schema 1 has exactly: schema_version, language, depth, recommendation,
+minimums, requester, reason, criteria, findings, tests, security, impact, scope,
+trace. depth is 'lite' or 'deep'; a report written before depth existed omits
+it and is read as 'deep', the only depth that contract had. criteria has
+requirements/tests/security/compatibility, each {status, evidence}. findings
+contains {id, material: bool, status, evidence} plus optional structured keys
+(severity, path, line, conditions, impact, minimal_fix, visible_flow,
+adjudication, security_exploitable: bool); line needs path. tests contains
 {command, cwd: relative path, status, evidence}. security has string lists
 standards/controls/limitations. trace has models: string list, route: string,
-cr: string list. requester is a caller-confirmed name or null, never inferred.
-Use `template` to obtain a complete incomplete-review document with live scope.
+cr: string list, plus optional metadata keys (pr_url, base, head,
+requested_model, effective_model, requested_effort, effective_effort,
+session_model, fallback). requester is a caller-confirmed name or null, never
+inferred. Use `template` to obtain a complete incomplete-review document with
+live scope.
 
 No commands from reports are executed. No remote services, Git writes, hooks,
 filters or submodule initialization are used. Git metadata may live outside the
@@ -51,12 +58,23 @@ MAX_DEPTH = 16
 MAX_SECONDS = 45
 GIT_SECONDS = 8
 CRITERIA = ('requirements', 'tests', 'security', 'compatibility')
+DEPTHS = ('lite', 'deep')
+SEVERITIES = ('critical', 'high', 'medium', 'low')
 STATUSES = ('met', 'not_met', 'not_verified', 'not_applicable')
 RECOMMENDATIONS = ('approval_recommended', 'changes_required', 'review_incomplete')
 TEST_STATUSES = ('passed', 'failed', 'not_run', 'partial', 'no_tests')
 ROOT_FIELDS = {'schema_version', 'language', 'recommendation', 'minimums',
                'requester', 'reason', 'criteria', 'findings', 'tests',
                'security', 'impact', 'scope', 'trace'}
+# Reports written before depth existed omit it; they always carried the security review.
+ROOT_OPTIONAL = {'depth'}
+LEGACY_DEPTH = 'deep'
+FINDING_REQUIRED = {'id', 'material', 'status', 'evidence'}
+FINDING_OPTIONAL = {'severity', 'path', 'line', 'conditions', 'impact',
+                    'minimal_fix', 'visible_flow', 'adjudication', 'security_exploitable'}
+TRACE_REQUIRED = {'models', 'route', 'cr'}
+TRACE_OPTIONAL = {'pr_url', 'base', 'head', 'requested_model', 'effective_model',
+                  'requested_effort', 'effective_effort', 'session_model', 'fallback'}
 EXCLUSIONS = ['ignored_files', 'external_repositories']
 SHA = re.compile(r'(?:[a-f0-9]{40}|[a-f0-9]{64})\Z')
 NOFOLLOW = os.O_NOFOLLOW
@@ -479,8 +497,12 @@ def _strings(value, nonempty=False):
     return type(value) is list and len(value) <= 1000 and (bool(value) or not nonempty) and all(_text(item) for item in value)
 
 
-def _shape(value, fields):
-    return type(value) is dict and set(value) == set(fields)
+def _shape(value, fields, optional=()):
+    if type(value) is not dict:
+        return False
+    keys = set(value)
+    required = set(fields)
+    return required <= keys <= (required | set(optional))
 
 
 def _bounded_json(value):
@@ -522,12 +544,14 @@ def validate_report(report, repo):
     def error(code):
         if code not in errors:
             errors.append(code)
-    if not _bounded_json(report) or not _shape(report, ROOT_FIELDS):
+    if not _bounded_json(report) or not _shape(report, ROOT_FIELDS, ROOT_OPTIONAL):
         return {'valid': False, 'errors': ['REPORT_SCHEMA_INVALID']}
     if type(report['schema_version']) is not int or report['schema_version'] != 1:
         error('REPORT_SCHEMA_INVALID')
     if report['language'] not in ('es', 'en'):
         error('REPORT_SCHEMA_INVALID')
+    if report.get('depth', LEGACY_DEPTH) not in DEPTHS:
+        error('DEPTH_INVALID')
     if report['recommendation'] not in RECOMMENDATIONS or report['minimums'] not in STATUSES[:3]:
         error('REPORT_SCHEMA_INVALID')
     if report['requester'] is not None and not _text(report['requester']):
@@ -549,13 +573,20 @@ def validate_report(report, repo):
     else:
         identifiers = set()
         for item in findings:
-            if (not _shape(item, ('id', 'material', 'status', 'evidence')) or
+            if (not _shape(item, FINDING_REQUIRED, FINDING_OPTIONAL) or
                     not _text(item['id']) or type(item['material']) is not bool or
                     item['status'] not in ('open', 'resolved', 'dismissed')):
                 error('FINDINGS_INVALID')
             elif not _text(item['evidence']):
                 error('EVIDENCE_REQUIRED')
             elif item['id'] in identifiers:
+                error('FINDINGS_INVALID')
+            elif ('severity' in item and item['severity'] not in SEVERITIES) or (
+                    'path' in item and not _relative(item['path'])) or (
+                    'line' in item and (type(item['line']) is not int or item['line'] < 1 or 'path' not in item)) or (
+                    'security_exploitable' in item and type(item['security_exploitable']) is not bool) or any(
+                    key in item and not _text(item[key])
+                    for key in ('conditions', 'impact', 'minimal_fix', 'visible_flow', 'adjudication')):
                 error('FINDINGS_INVALID')
             else:
                 identifiers.add(item['id'])
@@ -578,8 +609,9 @@ def validate_report(report, repo):
           (not security['standards'] or not security['controls'])):
         error('SECURITY_EVIDENCE_REQUIRED')
     trace = report['trace']
-    if (not _shape(trace, ('models', 'route', 'cr')) or
-            not _strings(trace['models'], nonempty=True) or not _text(trace['route']) or not _strings(trace['cr'])):
+    if (not _shape(trace, TRACE_REQUIRED, TRACE_OPTIONAL) or
+            not _strings(trace['models'], nonempty=True) or not _text(trace['route']) or not _strings(trace['cr']) or
+            any(key in trace and trace[key] is not None and not _text(trace[key]) for key in TRACE_OPTIONAL)):
         error('TRACE_INVALID')
     # Fresh state is always derived from the explicit argument, never report paths.
     try:
@@ -660,10 +692,12 @@ def load_report(path):
             os.close(directory)
 
 
-def template(repo, language='es'):
+def template(repo, language='es', depth='deep'):
     """A truthful starting point: all checks pending, no claim of execution."""
+    if depth not in DEPTHS:
+        raise CheckError('DEPTH_INVALID')
     pending = 'Pendiente de aportar evidencia.' if language == 'es' else 'Evidence has not been supplied.'
-    return {'schema_version': 1, 'language': language, 'recommendation': 'review_incomplete',
+    return {'schema_version': 1, 'language': language, 'depth': depth, 'recommendation': 'review_incomplete',
             'minimums': 'not_verified', 'requester': None, 'reason': pending,
             'criteria': {key: {'status': 'not_verified', 'evidence': pending} for key in CRITERIA},
             'findings': [], 'tests': [{'command': 'Not selected', 'cwd': '.', 'status': 'not_run', 'evidence': pending}],
@@ -676,6 +710,33 @@ def _escape(value):
     text = html.escape(str(value), quote=False)
     text = re.sub(r'([\\`*_{}\[\]()#+.!|>-])', r'\\\1', text)
     return text.replace('\r', '').replace('\n', '<br>')
+
+
+def _code(value):
+    text = str(value).replace('\r', '').replace('\n', ' ')
+    fence = '``' if '`' in text else '`'
+    if text.startswith('`') or text.endswith('`'):
+        text = ' ' + text + ' '
+    return fence + text + fence
+
+
+SAFE_PR_URL = re.compile(r'^https://[a-zA-Z0-9.-]+(?::[0-9]{1,5})?/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[1-9][0-9]*/?$')
+
+
+def _header_model_summary(trace, es):
+    req_m = trace.get('requested_model')
+    eff_m = trace.get('effective_model')
+    req_e = trace.get('requested_effort')
+    eff_e = trace.get('effective_effort')
+    if any((req_m, eff_m, req_e, eff_e)):
+        req_parts = [part for part in (req_m, req_e) if part]
+        eff_parts = [part for part in (eff_m, eff_e) if part]
+        req_text = ' / '.join(req_parts) if req_parts else ('no declarado' if es else 'not declared')
+        eff_text = ' / '.join(eff_parts) if eff_parts else ('desconocido' if es else 'unknown')
+        if es:
+            return f'solicitado {_escape(req_text)}; efectivo {_escape(eff_text)}'
+        return f'requested {_escape(req_text)}; effective {_escape(eff_text)}'
+    return '; '.join(_escape(item) for item in trace['models'])
 
 
 def render_report(report, repo, language=None):
@@ -697,9 +758,28 @@ def render_report(report, repo, language=None):
     requester = report['requester']
     attribution = (('Generado por IA en nombre de ' if es else 'AI-generated on behalf of ') + _escape(requester) + '.') if requester else (
         'Generado por IA. Persona solicitante no identificada.' if es else 'AI-generated. Requester not identified.')
+    trace = report['trace']
+    depth = report.get('depth', LEGACY_DEPTH)
+    pr_url = trace.get('pr_url')
+    if pr_url and SAFE_PR_URL.fullmatch(pr_url):
+        scope_display = pr_url
+    else:
+        scope_display = _escape(pr_url or report['scope']['root'])
+    base_ref = trace.get('base')
+    head_ref = trace.get('head') or (report['scope']['repositories'][0]['head'] if report['scope']['repositories'] else None)
+    rev_text = ''
+    if base_ref and head_ref:
+        rev_text = ' (' + _code(base_ref + '..' + head_ref) + ')'
+    elif head_ref:
+        rev_text = ' (HEAD ' + _code(head_ref) + ')'
+    cr_text = ', '.join(_escape(value) for value in trace['cr']) if trace['cr'] else ('No registrado' if es else 'Not recorded')
     lines = ['# ' + ('Review consolidado: ' if es else 'Consolidated review: ') + names[report['recommendation']],
-             '', attribution, '', '**' + ('Mínimos del cambio' if es else 'Change minimums') + ':** ' + states[report['minimums']],
-             '**' + ('Alcance' if es else 'Scope') + ':** ' + _escape(report['scope']['root']),
+             '', attribution, '',
+             '**' + ('Mínimos del cambio' if es else 'Change minimums') + ':** ' + states[report['minimums']],
+             '**' + ('Profundidad' if es else 'Depth') + ':** `' + depth + '`',
+             '**' + ('Alcance' if es else 'Scope') + ':** ' + scope_display + rev_text,
+             '**' + ('Modelo y esfuerzo' if es else 'Model and effort') + ':** ' + _header_model_summary(trace, es),
+             '**' + ('Presupuesto' if es else 'Budget') + ':** ' + cr_text,
              '**' + ('Motivo' if es else 'Reason') + ':** ' + _escape(report['reason']), '',
              '| ' + ('Criterio | Evaluación | Evidencia o pendiente' if es else 'Criterion | Evaluation | Evidence or pending work') + ' |',
              '| --- | --- | --- |']
@@ -721,26 +801,81 @@ def render_report(report, repo, language=None):
     for item in report['scope']['submodules']:
         lines.append('- ' + _escape(item['path']) + ': ' + item['state'] + ', pinned `' +
                      (item['pinned_head'] or 'none') + '`, current `' + (item['current_head'] or 'unavailable') + '`.')
-    lines.extend(['', '## ' + ('Hallazgos y decisiones' if es else 'Findings and decisions'), ''])
+    lines.extend(['', '## ' + ('Hallazgos materiales y adjudicaciones' if es else 'Material findings and adjudications'), ''])
     for item in report['findings']:
-        lines.append('- ' + _escape(item['id']) + ': ' + item['status'] +
-                     (' [material]' if item['material'] else '') + '. ' + _escape(item['evidence']))
+        tags = []
+        if item['material']:
+            tags.append('material')
+        if item.get('severity'):
+            tags.append(item['severity'])
+        tag_text = (' [' + ', '.join(tags) + ']') if tags else ''
+        loc = ''
+        if item.get('path'):
+            loc = ' ' + _code(item['path'] + (':' + str(item['line']) if item.get('line') else ''))
+        lines.append('- ' + _escape(item['id']) + ': ' + item['status'] + tag_text + loc + '. ' + _escape(item['evidence']))
+        detail_labels = (
+            ('conditions', 'Condiciones', 'Conditions'),
+            ('impact', 'Impacto', 'Impact'),
+            ('minimal_fix', 'Corrección mínima', 'Minimal fix'),
+            ('visible_flow', 'Flujo / pantalla visible', 'Visible flow / screen'),
+            ('adjudication', 'Adjudicación del padre', 'Parent adjudication'),
+        )
+        for field_key, label_es, label_en in detail_labels:
+            if item.get(field_key):
+                lines.append('  - ' + (label_es if es else label_en) + ': ' + _escape(item[field_key]))
     if not report['findings']:
         lines.append('Sin hallazgos declarados dentro del alcance.' if es else 'No findings declared within the scope.')
-    lines.extend(['', '## ' + ('Pruebas, seguridad e impacto' if es else 'Tests, security and impact'), ''])
+    lines.extend(['', '## ' + ('Evidencia de pruebas' if es else 'Test evidence'), ''])
     for item in report['tests']:
         lines.append('- ' + _escape(item['command']) + ' (cwd: ' + _escape(item['cwd']) + '): ' + item['status'] + '. ' + _escape(item['evidence']))
-    for key, title_es, title_en in (('standards', 'Referencias', 'Standards'), ('controls', 'Controles', 'Controls'), ('limitations', 'Límites', 'Limitations')):
-        lines.append('')
-        lines.append('**' + (title_es if es else title_en) + '**')
-        lines.append('')
-        lines.extend('- ' + _escape(value) for value in report['security'][key])
-        if not report['security'][key]:
-            lines.append('Sin entradas declaradas.' if es else 'No entries declared.')
-    lines.extend(['', _escape(report['impact']), '', '## ' + ('Trazabilidad' if es else 'Traceability'), ''])
-    lines.extend('- ' + _escape(value) for value in report['trace']['models'])
-    lines.append('- ' + ('Ruta: ' if es else 'Route: ') + _escape(report['trace']['route']))
-    lines.extend('- ' + _escape(value) for value in report['trace']['cr'])
+    lines.extend(['', '## ' + ('Alcance del impacto (blast radius)' if es else 'Blast radius'), '', _escape(report['impact'])])
+    lines.extend(['', '## ' + ('Evidencia de seguridad' if es else 'Security evidence'), ''])
+    has_security_entries = any(report['security'][k] for k in ('standards', 'controls', 'limitations'))
+    if depth == 'lite' and not has_security_entries:
+        # The note must not claim a clean result the security criterion contradicts.
+        security_status = report['criteria']['security']['status']
+        if security_status == 'not_met':
+            lines.append(
+                'Profundidad `lite`: no se hizo la auditoría completa OWASP Top 10 / NIST SSDF. Se observó un defecto de seguridad en el cambio; consulta el criterio de seguridad y los hallazgos.'
+                if es else
+                'Depth `lite`: no full OWASP Top 10 / NIST SSDF audit was run. A security defect was observed in the change; see the security criterion and the findings.'
+            )
+        elif security_status == 'not_verified':
+            lines.append(
+                'Profundidad `lite`: no se hizo la auditoría completa OWASP Top 10 / NIST SSDF y la seguridad aplicable quedó sin verificar.'
+                if es else
+                'Depth `lite`: no full OWASP Top 10 / NIST SSDF audit was run and applicable security remains unverified.'
+            )
+        else:
+            lines.append(
+                'Profundidad `lite`: se omitió la auditoría completa OWASP Top 10 / NIST SSDF al no observarse defectos de seguridad obvios en el cambio.'
+                if es else
+                'Depth `lite`: skipped full OWASP Top 10 / NIST SSDF compliance audit with no obvious security defects spotted in the change.'
+            )
+    else:
+        if depth == 'lite':
+            lines.append(
+                'Profundidad `lite` (sin auditoría completa OWASP/NIST SSDF salvo hallazgos o límites declarados):'
+                if es else
+                'Depth `lite` (no full OWASP/NIST SSDF audit beyond declared findings or limitations):'
+            )
+        for idx, (key, title_es, title_en) in enumerate((('standards', 'Referencias', 'Standards'), ('controls', 'Controles', 'Controls'), ('limitations', 'Límites', 'Limitations'))):
+            if idx > 0 or depth == 'lite':
+                lines.append('')
+            lines.append('**' + (title_es if es else title_en) + '**')
+            lines.append('')
+            lines.extend('- ' + _escape(value) for value in report['security'][key])
+            if not report['security'][key]:
+                lines.append('Sin entradas declaradas.' if es else 'No entries declared.')
+    lines.extend(['', '## ' + ('Trazabilidad' if es else 'Traceability'), ''])
+    lines.append('- ' + ('Profundidad: `' if es else 'Depth: `') + depth + '`')
+    lines.extend('- ' + _escape(value) for value in trace['models'])
+    if trace.get('session_model'):
+        lines.append('- ' + ('Modelo de sesión: ' if es else 'Session model: ') + _escape(trace['session_model']))
+    lines.append('- ' + ('Ruta: ' if es else 'Route: ') + _escape(trace['route']))
+    if trace.get('fallback'):
+        lines.append('- ' + ('Fallback: ' if es else 'Fallback: ') + _escape(trace['fallback']))
+    lines.extend('- ' + _escape(value) for value in trace['cr'])
     lines.extend(['', ('La captura excluye archivos ignorados por Git y repositorios externos. ' if es else
                        'The snapshot excludes Git-ignored files and external repositories. ') +
                       ('El validador comprueba estructura, coherencia y vigencia del alcance; no ejecuta las pruebas declaradas ni certifica su calidad, seguridad o una aprobación humana.' if es else
@@ -760,13 +895,14 @@ def main(argv=None):
         parser.add_argument('--repo', required=True)
         parser.add_argument('--report')
         parser.add_argument('--language', choices=('es', 'en'))
+        parser.add_argument('--depth', choices=DEPTHS, default='deep')
         args = parser.parse_args(argv)
         if args.action in ('validate', 'render') and not args.report:
             raise CheckError('REPORT_REQUIRED')
         if args.action == 'snapshot':
             output = snapshot(args.repo)
         elif args.action == 'template':
-            output = template(args.repo, args.language or 'es')
+            output = template(args.repo, args.language or 'es', args.depth)
         else:
             report = load_report(args.report)
             if args.action == 'render':

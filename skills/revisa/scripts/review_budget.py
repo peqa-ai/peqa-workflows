@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts'))
 from git_paths import GitPathError, check_git_marker
 
 LIMIT = 3
+DEPTHS = ('lite', 'deep')
 CHANGE_ID = re.compile(r'^change-[a-z0-9][a-z0-9-]{0,79}$')
 LEGACY_ID = re.compile(r'^pr-([1-9][0-9]*)$')
 IDENTITY = re.compile(r'^(?:pr-[1-9][0-9]*|pr-url-[0-9a-f]{64}|change-[a-z0-9][a-z0-9-]{0,79})$')
@@ -27,6 +28,17 @@ IDENTITY = re.compile(r'^(?:pr-[1-9][0-9]*|pr-url-[0-9a-f]{64}|change-[a-z0-9][a
 
 class BudgetError(Exception):
     pass
+
+
+def _safe_label(value, code):
+    """Optional pass metadata. An empty value, such as an unset shell variable, records nothing."""
+    if value is None or (type(value) is str and not value.strip()):
+        return None
+    if type(value) is not str or len(value) > 256:
+        raise BudgetError(code)
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise BudgetError(code)
+    return value.strip()
 
 
 def now():
@@ -204,7 +216,10 @@ def verify(args, requested, number):
         raise BudgetError('RESERVATION_ALREADY_DISPATCHED')
     if review.get('head') != args.head:
         raise BudgetError('RESERVATION_HEAD_MISMATCH')
-    return {'valid': True, 'identity': data['identity'], 'used': len(data['passes']), 'limit': LIMIT}
+    out = {'valid': True, 'identity': data['identity'], 'used': len(data['passes']), 'limit': LIMIT}
+    if review.get('depth'):
+        out['depth'] = review['depth']
+    return out
 
 
 def run(args):
@@ -287,16 +302,37 @@ def run(args):
                 raise BudgetError('RESERVATION_HEAD_MISMATCH')
             review['dispatch_claimed_at'] = now()
             save(path, database)
-            return {'valid': True, 'identity': data['identity'], 'used': len(data['passes']), 'limit': LIMIT}
+            out = {'valid': True, 'identity': data['identity'], 'used': len(data['passes']), 'limit': LIMIT}
+            if review.get('depth'):
+                out['depth'] = review['depth']
+            return out
         if args.action == 'reserve':
             if len(data['passes']) >= LIMIT:
                 raise BudgetError('BUDGET_EXHAUSTED')
             if not args.head or not re.fullmatch(r'[a-fA-F0-9]{7,64}', args.head):
                 raise BudgetError('REVIEWED_REVISION_REQUIRED')
+            if args.depth is not None and args.depth not in DEPTHS:
+                raise BudgetError('INVALID_DEPTH')
+            model = _safe_label(args.model, 'INVALID_MODEL')
+            effort = _safe_label(args.effort, 'INVALID_EFFORT')
             token = uuid.uuid4().hex
-            data['passes'].append({'token': token, 'status': 'reserved', 'head': args.head, 'reserved_at': now()})
+            entry = {'token': token, 'status': 'reserved', 'head': args.head, 'reserved_at': now()}
+            if args.depth is not None:
+                entry['depth'] = args.depth
+            if model is not None:
+                entry['model'] = model
+            if effort is not None:
+                entry['effort'] = effort
+            data['passes'].append(entry)
             save(path, database)
-            return {**result(path, data), 'token': token}
+            receipt = {**result(path, data), 'token': token}
+            if args.depth is not None:
+                receipt['depth'] = args.depth
+            if model is not None:
+                receipt['model'] = model
+            if effort is not None:
+                receipt['effort'] = effort
+            return receipt
         if args.action == 'finish':
             review = next((p for p in data['passes'] if p['token'] == args.token), None)
             if review is None:
@@ -333,6 +369,9 @@ def main():
     identity.add_argument('--pr-url', help='Full HTTPS PR web URL, including host, owner/repository and /pull/number')
     parser.add_argument('--prior-used', type=int, help='Verified earlier review dispatch count; required for init')
     parser.add_argument('--head')
+    parser.add_argument('--depth', choices=DEPTHS, help='Review depth recorded on the pass: lite or deep')
+    parser.add_argument('--model', help='Requested reviewer model recorded on the pass')
+    parser.add_argument('--effort', help='Requested reviewer effort recorded on the pass')
     parser.add_argument('--token')
     parser.add_argument('--status', choices=['completed', 'failed', 'cancelled'])
     parser.add_argument('--from-id', help='Source change label for attach, or verified legacy pr-N for migrate')

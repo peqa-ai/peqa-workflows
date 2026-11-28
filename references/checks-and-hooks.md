@@ -15,18 +15,19 @@ El resultado indica `<git-common-dir>/peqa/checks`. Elige dentro un nombre únic
 Al fijar la revisión, antes de ejecutar las pruebas, crea el registro inicial. El template comienza honestamente incompleto:
 
 ```sh
-python3 "$PEQA_PLUGIN/scripts/review_checks.py" template --repo "$PEQA_REPO" --language es > "$PEQA_REPORT"
+python3 "$PEQA_PLUGIN/scripts/review_checks.py" template --repo "$PEQA_REPO" --language es --depth deep > "$PEQA_REPORT"
 ```
 
-Completa el JSON con evidencia observada y decisiones del padre. Usa `en` para inglés. El contrato `schema_version: 1` incluye:
+Completa el JSON con evidencia observada y decisiones del padre. Usa `en` para inglés y `--depth lite` o `--depth deep` según la profundidad elegida. El contrato `schema_version: 1` incluye:
 
+- `depth`: `lite` o `deep`. Un registro anterior a `0.25.0` no lo trae y se lee como `deep`, la única profundidad de entonces.
 - `recommendation`: `approval_recommended`, `changes_required` o `review_incomplete`; `minimums`: `met`, `not_met` o `not_verified`.
 - `requester`: nombre confirmado o `null`; `reason` e `impact`: explicación y alcance causal.
-- `criteria`: `requirements`, `tests`, `security`, `compatibility`; cada uno tiene `status` y `evidence`. Los estados añaden `not_applicable`, que necesita justificación.
-- `findings`: objetos con `id`, `material`, `status` (`open`, `resolved`, `dismissed`) y `evidence`.
+- `criteria`: `requirements`, `tests`, `security`, `compatibility`; cada uno tiene `status` y `evidence`. Los estados añaden `not_applicable`, que necesita justificación (por ejemplo `security` en una revisión `lite` sin defectos obvios).
+- `findings`: objetos con `id`, `material`, `status` (`open`, `resolved`, `dismissed`) y `evidence`, más claves opcionales estructuradas (`severity`, `path`, `line`, `conditions`, `impact`, `minimal_fix`, `visible_flow`, `adjudication`, `security_exploitable`). `line` exige `path`; `security_exploitable` es un booleano que usa [la publicación en el PR](../skills/revisa/references/report.md#revisión-directa-por-url-de-pr) y no aparece en el render.
 - `tests`: objetos con `command`, `cwd` relativo al proyecto, `status` (`passed`, `failed`, `not_run`, `partial`, `no_tests`) y `evidence`. Incluye resultados y pendientes relevantes.
 - `security`: listas de texto `standards`, `controls`, `limitations`, con versiones, IDs, resultados y fuentes según [seguridad del review](../skills/revisa/references/security.md).
-- `trace`: listas de texto `models` y `cr`, y texto `route`; distingue configuración solicitada y efectiva, contador por PR y sus fuentes.
+- `trace`: listas de texto `models` y `cr`, y texto `route`, más metadatos opcionales (`pr_url`, `base`, `head`, `requested_model`, `effective_model`, `requested_effort`, `effective_effort`, `session_model`, `fallback`); distingue configuración solicitada y efectiva, contador por PR y sus fuentes.
 - `scope`: captura generada por el helper. Conserva este objeto junto a la evidencia que se obtuvo sobre ese estado.
 
 Después de integrar las conclusiones, ejecuta:

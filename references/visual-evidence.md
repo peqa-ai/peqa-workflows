@@ -40,7 +40,7 @@ gh pr edit "$PR_URL" --body-file "$CUERPO" --attach "$EVIDENCIA/guardar-error.pn
 gh pr comment "$PR_URL" --body-file "$CUERPO" --attach "$EVIDENCIA/guardar-error.png"
 ```
 
-Escribe en el cuerpo la misma ruta absoluta que pasas a `--attach`. `gh` reemplaza la referencia por la URL subida y añade al final las imágenes que el cuerpo no mencione. Una imagen subida no puede borrarse, por eso la revisión de su contenido va antes. Antes de enviar, busca en el texto rutas locales, como la raíz del checkout o el directorio personal, y sustitúyelas; solo quedan las de las imágenes que reemplazará `--attach`. `gh pr review` no admite adjuntos: [el review publicado](../skills/revisa/references/report.md#publicar-en-el-pr) usa `gh pr comment`.
+Escribe en el cuerpo la misma ruta absoluta que pasas a `--attach`. `gh` reemplaza la referencia por la URL subida y añade al final las imágenes que el cuerpo no mencione. Una imagen subida no puede borrarse, por eso la revisión de su contenido va antes. Antes de enviar, busca en el texto rutas locales, como la raíz del checkout o el directorio personal, y sustitúyelas; solo quedan las de las imágenes que reemplazará `--attach`. `gh pr review` y el endpoint `/pulls/{n}/reviews` no admiten adjuntos locales con `--attach`: cuando [el review publicado](../skills/revisa/references/report.md#publicar-en-el-pr) lleve capturas locales usa `gh pr comment --attach`, sin duplicar la publicación con otra llamada de review.
 
 Después de publicar, comprueba que el cuerpo o comentario contiene las URLs subidas y ninguna ruta local; corrígelo si una subida falló. Esa copia es el destino durable de la evidencia: desde entonces el archivo local es un candidato ordinario de limpieza.
 
