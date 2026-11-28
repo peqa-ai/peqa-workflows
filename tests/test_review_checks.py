@@ -52,9 +52,9 @@ class ReviewChecksTests(unittest.TestCase):
     def snapshot(self):
         return json.loads(self.cli('snapshot').stdout)
 
-    def report(self):
+    def report(self, depth='deep'):
         return {
-            'schema_version': 1, 'language': 'es',
+            'schema_version': 1, 'language': 'es', 'depth': depth,
             'recommendation': 'approval_recommended', 'minimums': 'met',
             'requester': None, 'reason': 'Checks pertinentes completados.',
             'criteria': {key: {'status': 'met', 'evidence': 'Evidencia registrada.'}
@@ -65,7 +65,7 @@ class ReviewChecksTests(unittest.TestCase):
             'security': {'standards': ['NIST SSDF 1.1'],
                          'controls': ['PW.7: validación de rutas revisada.'], 'limitations': []},
             'impact': 'Acotado a la herramienta local.', 'scope': self.snapshot(),
-            'trace': {'models': ['Fixture reviewer, esfuerzo declarado'],
+            'trace': {'models': ['Astra 6.2, esfuerzo declarado'],
                       'route': 'local', 'cr': ['change-fixture: CR 1/3']},
         }
 
@@ -401,8 +401,86 @@ class ReviewChecksTests(unittest.TestCase):
         before = self.snapshot()
         report = json.loads(self.cli('template', '--language', 'en').stdout)
         self.assertEqual(report['recommendation'], 'review_incomplete')
+        self.assertEqual(report['depth'], 'deep')
         self.assertTrue(self.validate(report)['valid'])
+        lite = json.loads(self.cli('template', '--language', 'es', '--depth', 'lite').stdout)
+        self.assertEqual(lite['depth'], 'lite')
+        self.assertTrue(self.validate(lite)['valid'])
         self.assertEqual(before, self.snapshot())
+
+    def test_depth_validation_and_lite_vs_deep_standardized_rendering(self):
+        for bad_depth in ('full', '', None, 1, True):
+            report = self.report()
+            report['depth'] = bad_depth
+            with self.subTest(bad_depth=bad_depth):
+                self.assertIn('DEPTH_INVALID', self.validate(report, ok=False)['errors'])
+
+        lite = self.report(depth='lite')
+        lite['criteria']['security'] = {
+            'status': 'not_applicable',
+            'evidence': 'Profundidad lite: sin auditoría completa OWASP/NIST SSDF ni defectos obvios.',
+        }
+        lite['security'] = {'standards': [], 'controls': [], 'limitations': []}
+        self.assertTrue(self.validate(lite)['valid'])
+        rendered_lite = self.cli('render', '--language', 'es', report=lite).stdout
+        self.assertIn('**Profundidad:** `lite`', rendered_lite)
+        self.assertIn('se omitió la auditoría completa OWASP Top 10 / NIST SSDF', rendered_lite)
+
+        # Obvious security defect in lite mode still blocks approval
+        lite_fail = self.report(depth='lite')
+        lite_fail['criteria']['security'] = {'status': 'not_met', 'evidence': 'Consulta SQL sin parametrizar.'}
+        self.assertIn('RECOMMENDATION_CONTRADICTION', self.validate(lite_fail, ok=False)['errors'])
+
+        deep = self.report(depth='deep')
+        deep['recommendation'] = 'changes_required'
+        deep['minimums'] = 'not_met'
+        deep['criteria']['security'] = {'status': 'not_met', 'evidence': 'Falta aislamiento de tenant.'}
+        deep['findings'] = [{
+            'id': 'F1', 'material': True, 'status': 'open', 'severity': 'high',
+            'path': 'fixture.txt', 'line': 1, 'evidence': 'Consulta sin filtro de tenant.',
+            'conditions': 'Usuario de otro tenant.', 'impact': 'Lectura cruzada.',
+            'minimal_fix': 'Añadir cláusula WHERE tenant_id = ?.',
+            'visible_flow': 'GET /api/items', 'adjudication': 'Aceptado por el padre.',
+        }]
+        deep['trace'].update({
+            'pr_url': 'https://github.com/peqa-ai/sample/pull/9',
+            'base': 'main', 'head': 'abc1234',
+            'requested_model': 'Astra 6.2', 'effective_model': 'Astra 6.2',
+            'requested_effort': 'high', 'effective_effort': 'high',
+            'session_model': 'Opus 5.5', 'fallback': None,
+        })
+        self.assertTrue(self.validate(deep)['valid'])
+        rendered_deep = self.cli('render', '--language', 'es', report=deep).stdout
+        self.assertIn('**Profundidad:** `deep`', rendered_deep)
+        self.assertIn('https://github.com/peqa-ai/sample/pull/9', rendered_deep)
+        self.assertIn('`main..abc1234`', rendered_deep)
+        self.assertIn('solicitado Astra 6\\.2 / high; efectivo Astra 6\\.2 / high', rendered_deep)
+        self.assertIn('CR 1/3', rendered_deep)
+        self.assertIn('`fixture.txt:1`', rendered_deep)
+        self.assertIn('Adjudicación del padre:', rendered_deep)
+        self.assertIn('## Evidencia de pruebas', rendered_deep)
+        self.assertIn('## Alcance del impacto (blast radius)', rendered_deep)
+        self.assertIn('## Evidencia de seguridad', rendered_deep)
+        self.assertIn('NIST SSDF 1\\.1', rendered_deep)
+
+    def test_optional_finding_and_trace_fields_enforce_strict_validation(self):
+        bad_cases = [
+            lambda r: r['findings'].append({'id': 'F1', 'material': True, 'status': 'open',
+                                            'evidence': 'x', 'severity': 'urgent'}),
+            lambda r: r['findings'].append({'id': 'F1', 'material': True, 'status': 'open',
+                                            'evidence': 'x', 'path': '../escape.py'}),
+            lambda r: r['findings'].append({'id': 'F1', 'material': True, 'status': 'open',
+                                            'evidence': 'x', 'line': 0}),
+            lambda r: r['findings'].append({'id': 'F1', 'material': True, 'status': 'open',
+                                            'evidence': 'x', 'unknown_key': 'nope'}),
+            lambda r: r['trace'].update({'unknown_trace_key': 'nope'}),
+            lambda r: r['trace'].update({'requested_model': 123}),
+        ]
+        for idx, mutate in enumerate(bad_cases):
+            report = self.report()
+            mutate(report)
+            with self.subTest(case=idx):
+                self.assertFalse(self.validate(report, ok=False)['valid'])
 
 
 if __name__ == '__main__':

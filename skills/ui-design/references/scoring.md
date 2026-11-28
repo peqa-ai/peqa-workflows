@@ -9,7 +9,7 @@ Revisado el 2026-11-03. Después de la crítica, dos revisores independientes pu
 | Claude Code, en cualquier host | `Agent` de propósito general con `model: "opus"` | En T3, `delegate_task`; en Orca, un worker de Orca; fuera de ambos, Codex CLI. Las dos formas están abajo |
 | Codex, en cualquier host | En T3, `delegate_task` con el Opus más reciente del catálogo; en Orca, un worker de Orca; fuera de ambos, Claude Code CLI. Las dos formas están abajo | Subagente nativo, o `delegate_task` en T3 si el padre no usa ya esa configuración |
 
-Codex usa el modelo y el esfuerzo de [revisa](../../revisa/references/reviewers.md): `gpt-6.1-sol` en `xhigh`. Opus usa el esfuerzo por defecto del host. En T3, `delegate_task` sigue [subagentes en T3](../../../references/runtime-tools.md#subagentes-en-t3), con un encargo nuevo por revisor y ronda.
+Codex usa el modelo Codex configurado en el host (por ejemplo Sol 6.2 en esfuerzo alto) con las rutas de ejecución de [revisa](../../revisa/references/reviewers.md). Opus usa el esfuerzo por defecto del host. En T3, `delegate_task` sigue [subagentes en T3](../../../references/runtime-tools.md#subagentes-en-t3), con un encargo nuevo por revisor y ronda.
 
 Un revisor está disponible cuando su ruta existe y la ejecución termina con una respuesta completa. Usa solo CLIs ya instalados y autenticados: Codex se comprueba como indica [revisa](../../revisa/references/reviewers.md#agente-principal-en-claude-code-fuera-de-t3-code), y Claude Code con `claude --version` y `claude auth status`. Lanza los dos a la vez. Solo cuentan Claude Opus y Codex: si uno falta, puntúa el otro y el informe dice cuál faltó y por qué; sin ninguno, el informe declara pendiente la puntuación. Registra para cada uno el modelo y el esfuerzo solicitados y los efectivos que exponga el host.
 
@@ -19,7 +19,7 @@ El host se elige como indica [herramientas del entorno](../../../references/runt
 
 ```sh
 # Padre Claude Code
-"$ORCA" orchestration worker-start --agent codex --model gpt-6.1-sol --effort xhigh \
+"$ORCA" orchestration worker-start --agent codex --model "$CODEX_MODEL" --effort "$CODEX_EFFORT" \
   --worktree "path:$REPO" --task-title "ui-design: puntuación" \
   --spec-file "$NOTAS/encargo.md" --json
 # Padre Codex
@@ -35,7 +35,7 @@ Fuera de T3 y de Orca, Codex desde Claude Code, con una opción `-i` por captura
 ```sh
 codex -a never exec \
   -i "$EVIDENCIA/375.png" -i "$EVIDENCIA/1440.png" \
-  --model gpt-6.1-sol -c 'model_reasoning_effort="xhigh"' \
+  --model "$CODEX_MODEL" -c "model_reasoning_effort=\"$CODEX_EFFORT\"" \
   --sandbox read-only --ephemeral --cd "$REPO" --json --color never \
   --output-last-message "$NOTAS/codex.json" \
   - < "$NOTAS/encargo.md" > "$NOTAS/codex-eventos.jsonl" 2> "$NOTAS/codex-errores.log"

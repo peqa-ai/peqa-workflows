@@ -203,6 +203,50 @@ class ReviewBudgetTests(unittest.TestCase):
         self.assertNotEqual(rc, 0)
         self.assertEqual(data['error'], 'LEDGER_ALREADY_EXISTS')
 
+    def test_depth_model_and_effort_persist_in_ledger_and_across_lifecycle(self):
+        self.initialize('change-depth', used=0)
+        rc, first = self.call('reserve', 'change-depth', '--head', 'a' * 40,
+                              '--depth', 'lite', '--model', 'Sol 6.2', '--effort', 'medium')
+        self.assertEqual(rc, 0, first)
+        self.assertEqual(first['depth'], 'lite')
+        self.assertEqual(first['model'], 'Sol 6.2')
+        self.assertEqual(first['effort'], 'medium')
+        rc, verified = self.call('verify', 'change-depth', '--head', 'a' * 40, '--token', first['token'])
+        self.assertEqual(rc, 0, verified)
+        self.assertEqual(verified['depth'], 'lite')
+        rc, claimed = self.call('claim', 'change-depth', '--head', 'a' * 40, '--token', first['token'])
+        self.assertEqual(rc, 0, claimed)
+        self.assertEqual(claimed['depth'], 'lite')
+        rc, finished = self.call('finish', 'change-depth', '--token', first['token'], '--status', 'completed')
+        self.assertEqual(rc, 0, finished)
+        self.assertEqual(finished['passes'][0]['depth'], 'lite')
+        self.assertEqual(finished['passes'][0]['model'], 'Sol 6.2')
+
+        self.initialize(PR, used=0)
+        rc, attached = self.call('attach', PR, '--from-id', 'change-depth')
+        self.assertEqual(rc, 0, attached)
+        self.assertEqual(attached['passes'][0]['depth'], 'lite')
+
+        rc, second = self.call('reserve', PR, '--head', 'b' * 40,
+                               '--depth', 'deep', '--model', 'Astra 6.2', '--effort', 'high')
+        self.assertEqual(rc, 0, second)
+        self.assertEqual(second['depth'], 'deep')
+        inspected = self.call('inspect', PR)[1]
+        self.assertEqual([p['depth'] for p in inspected['passes']], ['lite', 'deep'])
+        self.assertEqual([p['model'] for p in inspected['passes']], ['Sol 6.2', 'Astra 6.2'])
+
+    def test_invalid_depth_and_control_char_model_are_rejected(self):
+        self.initialize(PR, used=0)
+        bad_depth = subprocess.run(
+            [sys.executable, str(SCRIPT), 'reserve', '--repo', str(self.repo),
+             '--pr-url', PR, '--head', 'a' * 40, '--depth', 'full'],
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(bad_depth.returncode, 0)
+        rc, bad_model = self.call('reserve', PR, '--head', 'a' * 40, '--depth', 'deep', '--model', 'bad\nmodel')
+        self.assertNotEqual(rc, 0)
+        self.assertEqual(bad_model['error'], 'INVALID_MODEL')
+
 
 if __name__ == '__main__':
     unittest.main()
