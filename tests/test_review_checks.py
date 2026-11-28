@@ -482,6 +482,91 @@ class ReviewChecksTests(unittest.TestCase):
             with self.subTest(case=idx):
                 self.assertFalse(self.validate(report, ok=False)['valid'])
 
+    def test_report_written_before_depth_existed_still_validates_and_reads_as_deep(self):
+        legacy = self.report()
+        del legacy['depth']
+        self.assertEqual(self.validate(legacy), {'valid': True, 'errors': []})
+        rendered = self.cli('render', '--language', 'es', report=legacy).stdout
+        self.assertIn('**Profundidad:** `deep`', rendered)
+        self.assertIn('- Profundidad: `deep`', rendered)
+        self.assertIn('NIST SSDF 1\\.1', rendered)
+        # Legacy findings and trace carried only the required keys.
+        legacy['recommendation'], legacy['minimums'] = 'changes_required', 'not_met'
+        legacy['findings'] = [{'id': 'F1', 'material': True, 'status': 'open', 'evidence': 'Requisito incumplido.'}]
+        self.assertTrue(self.validate(legacy)['valid'])
+        self.assertIn('- F1: open [material]. Requisito incumplido\\.',
+                      self.cli('render', '--language', 'es', report=legacy).stdout)
+        # Leniency covers the missing key only, not unknown root keys.
+        legacy['depht'] = 'lite'
+        self.assertEqual(self.validate(legacy, ok=False)['errors'], ['REPORT_SCHEMA_INVALID'])
+
+    def test_lite_security_note_never_contradicts_the_security_criterion(self):
+        clean_note = 'al no observarse defectos de seguridad obvios'
+        empty = {'standards': [], 'controls': [], 'limitations': []}
+
+        defect = self.report(depth='lite')
+        defect['recommendation'], defect['minimums'] = 'changes_required', 'not_met'
+        defect['criteria']['security'] = {'status': 'not_met', 'evidence': 'Consulta SQL sin parametrizar.'}
+        defect['security'] = empty
+        rendered = self.cli('render', '--language', 'es', report=defect).stdout
+        self.assertNotIn(clean_note, rendered)
+        self.assertIn('Se observó un defecto de seguridad en el cambio', rendered)
+        self.assertIn('A security defect was observed', self.cli('render', '--language', 'en', report=defect).stdout)
+
+        pending = self.report(depth='lite')
+        pending['recommendation'], pending['minimums'] = 'review_incomplete', 'not_verified'
+        pending['criteria']['security'] = {'status': 'not_verified', 'evidence': 'Sin acceso a la configuración.'}
+        pending['security'] = empty
+        rendered = self.cli('render', '--language', 'es', report=pending).stdout
+        self.assertNotIn(clean_note, rendered)
+        self.assertIn('la seguridad aplicable quedó sin verificar', rendered)
+
+        declared = self.report(depth='lite')
+        declared['criteria']['security'] = {'status': 'not_applicable', 'evidence': 'Profundidad lite.'}
+        declared['security'] = {'standards': [], 'controls': [], 'limitations': ['Sin auditoría de dependencias.']}
+        rendered = self.cli('render', '--language', 'es', report=declared).stdout
+        self.assertNotIn(clean_note, rendered)
+        self.assertIn('Sin auditoría de dependencias', rendered)
+
+    def test_finding_location_and_exploitable_flag_are_validated(self):
+        base = {'id': 'F1', 'material': True, 'status': 'open', 'evidence': 'x'}
+        report = self.report()
+        report['recommendation'], report['minimums'] = 'changes_required', 'not_met'
+        report['findings'] = [{**base, 'path': 'fixture.txt', 'line': 1, 'security_exploitable': True}]
+        self.assertTrue(self.validate(report)['valid'])
+        self.assertNotIn('security_exploitable', self.cli('render', report=report).stdout)
+        for extra in ({'line': 3}, {'path': 'fixture.txt', 'line': True}, {'path': 'fixture.txt', 'line': '3'},
+                      {'security_exploitable': 'yes'}, {'security_exploitable': 1}, {'path': '/abs/x.py'},
+                      {'path': '.git/config'}, {'adjudication': ''}, {'conditions': None}):
+            report['findings'] = [{**base, **extra}]
+            with self.subTest(extra=extra):
+                self.assertIn('FINDINGS_INVALID', self.validate(report, ok=False)['errors'])
+
+    def test_header_escapes_trace_fields_and_ignores_unsafe_pr_urls(self):
+        report = self.report()
+        report['trace'].update({
+            'pr_url': 'https://example.com/o/r/pull/9?x=<script>',
+            'base': 'ma`in', 'head': 'feature\nbranch',
+            'requested_model': 'Astra | 6.2', 'requested_effort': '<b>high</b>',
+            'session_model': '**Opus**', 'fallback': 'Subagente [del] motor actual',
+        })
+        rendered = self.cli('render', '--language', 'es', report=report).stdout
+        self.assertNotIn('<script>', rendered)
+        self.assertNotIn('<b>', rendered)
+        self.assertIn('``ma`in..feature branch``', rendered)
+        self.assertIn('Astra \\| 6\\.2 / &lt;b&gt;high&lt;/b&gt;; efectivo desconocido', rendered)
+        self.assertIn('- Modelo de sesión: \\*\\*Opus\\*\\*', rendered)
+        self.assertIn('- Fallback: Subagente \\[del\\] motor actual', rendered)
+        header = [line for line in rendered.splitlines() if line.startswith('**Alcance:**')]
+        self.assertEqual(len(header), 1)
+        self.assertIn('https://example\\.com/o/r/pull/9?x=&lt;script&gt;', header[0])
+
+        local = self.report()
+        rendered = self.cli('render', '--language', 'en', report=local).stdout
+        self.assertIn('**Model and effort:** Astra 6\\.2, esfuerzo declarado', rendered)
+        self.assertIn('**Budget:** change\\-fixture: CR 1/3', rendered)
+        self.assertIn('(HEAD `' + local['scope']['repositories'][0]['head'] + '`)', rendered)
+
 
 if __name__ == '__main__':
     unittest.main()

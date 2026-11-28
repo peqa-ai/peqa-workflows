@@ -2,11 +2,15 @@
 """Deterministic reviewer model/depth recommendation and PR inline review payload helper.
 
 Python 3.10+ standard library only. Read-only, no network, no subprocesses.
+
+Model strings are matched by family name (astra, opus, neon, sol) as whole words;
+the exact version and provider ID come from the host catalog, never from here.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -14,8 +18,15 @@ from urllib.parse import urlsplit
 
 
 MAX_INPUT_BYTES = 2 * 1024 * 1024
-SHA_RE = re.compile(r'^[a-fA-F0-9]{7,64}$')
-HUNK_RE = re.compile(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@')
+# commit_id is the full head SHA (headRefOid); an abbreviation is refused here, not left to the API.
+SHA_RE = re.compile(r'^(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$')
+HUNK_RE = re.compile(r'^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
+# GitHub caps a review body and each review comment at 65536 characters.
+MAX_GITHUB_BODY_CHARS = 65536
+SEVERITIES = ('critical', 'high', 'medium', 'low')
+FINDING_STATUSES = ('open', 'resolved', 'dismissed')
+FINDING_TEXT_FIELDS = ('conditions', 'impact', 'minimal_fix', 'visible_flow', 'adjudication')
+LOCAL_PATH_RE = re.compile(r'(?<![\w.:/~-])(?:/(?:Users|home|private|tmp|var/folders)/|~/)[^\s`)\]>"\']*')
 
 MODELS = {
     'astra-6.2': {
@@ -47,6 +58,10 @@ MODELS = {
         'summary_en': 'Simpler, smaller tasks and lightweight reviews.',
     },
 }
+
+MODEL_FAMILIES = (('astra', 'astra-6.2'), ('opus', 'opus-5.5'), ('neon', 'neon-4'), ('sol', 'sol-6.2'))
+# Placeholders a host uses when it does not expose the running model.
+UNDETECTED_MODELS = frozenset({'unknown', 'desconocido', 'none', 'null', 'auto', 'default', 'inherit'})
 
 DOMAINS = ('backend', 'frontend', 'fullstack', 'simple', 'general')
 COMPLEXITIES = ('simple', 'standard', 'complex')
@@ -86,24 +101,31 @@ class PlanError(Exception):
 def normalize_model_id(raw: str | None) -> str | None:
     """Map a host-exposed or user-typed model string to a canonical reviewer catalog ID.
 
-    Returns one of the four catalog IDs, or None if the input is empty/unknown or
-    refers to a model outside the four-model catalog.
+    Returns one of the four catalog IDs, or None if the input is empty/unknown,
+    names a model outside the four-model catalog, or names more than one family.
+    The family must appear as a whole word: `gpt-6.2-sol` is Sol, `console` is not.
     """
     if not raw or not isinstance(raw, str):
         return None
     text = raw.strip().lower()
-    if not text or text in ('unknown', 'desconocido', 'none', 'null', 'auto'):
+    if not text or text in UNDETECTED_MODELS:
         return None
-    compact = re.sub(r'[\s_]+', '-', text)
-    if 'astra' in compact:
-        return 'astra-6.2'
-    if 'opus' in compact:
-        return 'opus-5.5'
-    if 'neon' in compact:
-        return 'neon-4'
-    if 'sol' in compact:
-        return 'sol-6.2'
-    return None
+    words = set(re.findall(r'[a-z]+', text))
+    matches = [model_id for family, model_id in MODEL_FAMILIES if family in words]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _available_ids(available_models) -> set[str] | None:
+    """None means the caller did not check routes; a set lists the models it can run."""
+    if available_models is None:
+        return None
+    ids = set()
+    for item in available_models:
+        model_id = normalize_model_id(item)
+        if model_id is None:
+            raise PlanError('INVALID_AVAILABLE_MODEL')
+        ids.add(model_id)
+    return ids
 
 
 def _clean_flags(risk_flags) -> list[str]:
@@ -130,8 +152,14 @@ def recommend_review(
     session_model: str | None = None,
     requested_model: str | None = None,
     requested_depth: str | None = None,
+    available_models=None,
 ) -> dict:
-    """Recommend reviewer model and depth (`lite` | `deep`) with session diversity."""
+    """Recommend reviewer model and depth (`lite` | `deep`) with session diversity.
+
+    `available_models` lists the catalog models this host can actually run. When
+    given, models without a route are ordered last and never recommended while
+    another one is available.
+    """
     domain = (domain or 'general').strip().lower()
     complexity = (complexity or 'standard').strip().lower()
     if domain not in DOMAINS:
@@ -141,9 +169,7 @@ def recommend_review(
     flags = _clean_flags(risk_flags)
 
     session_raw = session_model.strip() if isinstance(session_model, str) and session_model.strip() else None
-    session_detected = bool(
-        session_raw and session_raw.lower() not in ('unknown', 'desconocido', 'none', 'null')
-    )
+    session_detected = bool(session_raw and session_raw.lower() not in UNDETECTED_MODELS)
     session_id = normalize_model_id(session_raw) if session_detected else None
 
     explicit_model_id = None
@@ -186,6 +212,13 @@ def recommend_review(
     ordered_ids = [mid for mid in priority if mid != session_id]
     if session_id is not None:
         ordered_ids.append(session_id)
+    available = _available_ids(available_models)
+    if available:
+        ordered_ids = ([mid for mid in ordered_ids if mid in available]
+                       + [mid for mid in ordered_ids if mid not in available])
+
+    def is_available(model_id):
+        return None if available is None else model_id in available
 
     recommended_model_id = ordered_ids[0]
     selected_model_id = explicit_model_id or recommended_model_id
@@ -208,6 +241,7 @@ def recommend_review(
             'role': info['role'],
             'recommended': index == 0,
             'matches_session_model': mid == session_id,
+            'available': is_available(mid),
             'summary_es': info['summary_es'],
             'summary_en': info['summary_en'],
         })
@@ -257,6 +291,10 @@ def recommend_review(
         'recommended_model_id': recommended_model_id,
         'selected_model': MODELS[selected_model_id]['name'],
         'selected_model_id': selected_model_id,
+        'selected_model_matches_session': session_id is not None and selected_model_id == session_id,
+        'availability_checked': available is not None,
+        'recommended_model_available': is_available(recommended_model_id),
+        'selected_model_available': is_available(selected_model_id),
         'model_options': model_options,
         'recommended_depth': recommended_depth,
         'selected_depth': selected_depth,
@@ -270,13 +308,20 @@ def parse_pr_url(value: str) -> dict:
     """Validate and parse a GitHub-style HTTPS PR web URL."""
     if not isinstance(value, str) or not value.strip():
         raise PlanError('PR_URL_REQUIRED')
-    parsed = urlsplit(value.strip())
-    if parsed.scheme != 'https' or not parsed.hostname or parsed.username is not None or parsed.password is not None:
+    try:
+        parsed = urlsplit(value.strip())
+        hostname, username, password = parsed.hostname, parsed.username, parsed.password
+    except ValueError as exc:
+        raise PlanError('HTTPS_PR_URL_REQUIRED') from exc
+    if parsed.scheme != 'https' or not hostname or username is not None or password is not None:
         raise PlanError('HTTPS_PR_URL_REQUIRED')
-    host = parsed.hostname.lower().rstrip('.')
+    host = hostname.lower().rstrip('.')
     if not re.fullmatch(r'[a-z0-9.-]+', host):
         raise PlanError('INVALID_PR_HOST')
-    port = parsed.port
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise PlanError('INVALID_PR_PORT') from exc
     if port is not None and not 1 <= port <= 65535:
         raise PlanError('INVALID_PR_PORT')
     host_port = host if port in (None, 443) else f'{host}:{port}'
@@ -340,68 +385,143 @@ def _safe_relative_path(path: str) -> bool:
     return not any(part in ('', '.', '..', '.git') for part in path.split('/'))
 
 
+_C_ESCAPES = {'a': 7, 'b': 8, 't': 9, 'n': 10, 'v': 11, 'f': 12, 'r': 13, '"': 34, '\\': 92}
+
+
+def _unquote_git_path(target: str) -> str | None:
+    """Decode the C-style quoting Git applies to non-ASCII or special paths."""
+    if not (len(target) >= 2 and target.startswith('"') and target.endswith('"')):
+        return target
+    inner = target[1:-1]
+    out = bytearray()
+    index = 0
+    while index < len(inner):
+        char = inner[index]
+        if char != '\\':
+            out.extend(char.encode('utf-8'))
+            index += 1
+        elif inner[index + 1:index + 2] in _C_ESCAPES:
+            out.append(_C_ESCAPES[inner[index + 1]])
+            index += 2
+        elif re.fullmatch(r'[0-3][0-7]{2}', inner[index + 1:index + 4]):
+            out.append(int(inner[index + 1:index + 4], 8))
+            index += 4
+        else:
+            return None
+    try:
+        return out.decode('utf-8')
+    except UnicodeDecodeError:
+        return None
+
+
 def extract_diff_right_lines(diff_text: str) -> dict[str, set[int]]:
-    """Return {path: {line_numbers}} valid for RIGHT-side inline PR review comments."""
+    """Return {path: {line_numbers}} valid for RIGHT-side inline PR review comments.
+
+    Hunk bodies are consumed by the line counts of their `@@` header, so content
+    that looks like a header (an added line starting with `++ `) stays content.
+    """
     if not isinstance(diff_text, str):
         raise PlanError('DIFF_INVALID')
     if len(diff_text.encode('utf-8')) > MAX_INPUT_BYTES:
         raise PlanError('INPUT_TOO_LARGE')
     lines_by_path: dict[str, set[int]] = {}
     current_path: str | None = None
-    right_line: int | None = None
+    right_line = 0
+    old_left = new_left = 0
 
-    for raw in diff_text.splitlines():
+    # Only \n ends a diff line; str.splitlines would also cut on form feeds or U+2028 inside code.
+    lines = diff_text.split('\n')
+    if lines and lines[-1] == '':
+        lines.pop()
+    for raw in lines:
+        if old_left > 0 or new_left > 0:
+            marker = raw[:1]
+            if marker == '\\':
+                continue
+            if marker == '+' and new_left > 0:
+                if current_path:
+                    lines_by_path[current_path].add(right_line)
+                right_line += 1
+                new_left -= 1
+                continue
+            if marker == '-' and old_left > 0:
+                old_left -= 1
+                continue
+            # A tool that trims trailing whitespace leaves a blank context line empty.
+            if marker in (' ', '', '\r') and old_left > 0 and new_left > 0:
+                if current_path:
+                    lines_by_path[current_path].add(right_line)
+                right_line += 1
+                old_left -= 1
+                new_left -= 1
+                continue
+            old_left = new_left = 0  # Malformed hunk: stop trusting it and re-read this line as a header.
         if raw.startswith('diff --git '):
             current_path = None
-            right_line = None
-            continue
-        if raw.startswith('+++ '):
-            target = raw[4:].split('\t', 1)[0].strip()
-            if target == '/dev/null':
-                current_path = None
-            else:
-                if target.startswith('b/'):
-                    target = target[2:]
-                if target.startswith('"') and target.endswith('"'):
-                    target = target[1:-1]
-                current_path = target if _safe_relative_path(target) else None
-                if current_path:
-                    lines_by_path.setdefault(current_path, set())
-            right_line = None
-            continue
-        if raw.startswith('@@ '):
+        elif raw.startswith('+++ '):
+            target = _unquote_git_path(raw[4:].split('\t', 1)[0].rstrip('\r'))
+            if target is not None and target.startswith('b/'):
+                target = target[2:]
+            current_path = target if target is not None and _safe_relative_path(target) else None
+            if current_path:
+                lines_by_path.setdefault(current_path, set())
+        elif raw.startswith('@@ '):
             match = HUNK_RE.match(raw)
-            if match and current_path:
-                right_line = int(match.group(1))
-            else:
-                right_line = None
-            continue
-        if current_path is None or right_line is None:
-            continue
-        if raw.startswith('+'):
-            lines_by_path[current_path].add(right_line)
-            right_line += 1
-        elif raw.startswith(' '):
-            lines_by_path[current_path].add(right_line)
-            right_line += 1
-        elif raw.startswith('-'):
-            continue
-        elif raw.startswith('\\ No newline at end of file'):
-            continue
-        else:
-            right_line = None
+            if match:
+                old_left = 1 if match.group(1) is None else int(match.group(1))
+                right_line = int(match.group(2))
+                new_left = 1 if match.group(3) is None else int(match.group(3))
     return lines_by_path
 
 
+def _local_root_prefixes(local_root: str | None) -> list[str]:
+    """Absolute spellings of the checkout root; a relative root such as `.` is resolved first."""
+    if not local_root or not isinstance(local_root, str):
+        return []
+    prefixes = set()
+    for candidate in (os.path.abspath(local_root), os.path.realpath(local_root)):
+        candidate = candidate.rstrip('/')
+        if len(candidate) > 1:
+            prefixes.add(candidate)
+    return sorted(prefixes, key=len, reverse=True)
+
+
 def _sanitize_local_root(text: str, local_root: str | None) -> str:
-    if not local_root:
-        return text
     cleaned = text
-    variants = {local_root.rstrip('/'), str(Path(local_root).resolve()).rstrip('/')}
-    for prefix in sorted(variants, key=len, reverse=True):
-        if prefix:
-            cleaned = cleaned.replace(prefix + '/', '').replace(prefix, '<repo>')
+    for prefix in _local_root_prefixes(local_root):
+        # The lookahead keeps /work/app from matching inside /work/app-old.
+        cleaned = re.sub(re.escape(prefix) + r'(?:(/)|(?![A-Za-z0-9_-]))',
+                         lambda match: '' if match.group(1) else '<repo>', cleaned)
     return cleaned
+
+
+def _one_line(text: str) -> str:
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+def _check_finding(item) -> None:
+    """Reject a finding the formatters cannot render, with a fixed code instead of a traceback."""
+    if not isinstance(item, dict):
+        raise PlanError('FINDINGS_INVALID')
+    for key in ('id', 'evidence'):
+        if not isinstance(item.get(key), str) or not item[key].strip():
+            raise PlanError('FINDINGS_INVALID')
+    for key in FINDING_TEXT_FIELDS:
+        if item.get(key) is not None and not isinstance(item[key], str):
+            raise PlanError('FINDINGS_INVALID')
+    if item.get('severity') is not None and item['severity'] not in SEVERITIES:
+        raise PlanError('FINDINGS_INVALID')
+    if item.get('status') is not None and item['status'] not in FINDING_STATUSES:
+        raise PlanError('FINDINGS_INVALID')
+    for key in ('material', 'security_exploitable'):
+        if item.get(key) is not None and type(item[key]) is not bool:
+            raise PlanError('FINDINGS_INVALID')
+    path = item.get('path')
+    line = item.get('line')
+    if path is not None and not _safe_relative_path(path):
+        raise PlanError('INVALID_FINDING_PATH')
+    if line is not None and (type(line) is not int or line < 1):
+        raise PlanError('INVALID_FINDING_LINE')
 
 
 def _format_inline_body(finding: dict, language: str = 'es') -> str:
@@ -428,7 +548,7 @@ def _format_orca_note_text(finding: dict) -> str:
     text = prefix + finding['evidence'].strip()
     if finding.get('minimal_fix'):
         text += ' Fix: ' + finding['minimal_fix'].strip()
-    return re.sub(r'\s+', ' ', text).strip()
+    return _one_line(text)
 
 
 def build_pr_review_payload(
@@ -441,11 +561,16 @@ def build_pr_review_payload(
     is_public_repo: bool = False,
     local_root: str | None = None,
 ) -> dict:
-    """Build a single-call GitHub COMMENT review payload + Orca --note list without double-posting."""
+    """Build a single-call GitHub COMMENT review payload + Orca --note list without double-posting.
+
+    `findings` is a list, or a consolidated report object carrying a `findings` list.
+    """
     pr = parse_pr_url(pr_url)
     if not isinstance(head_sha, str) or not SHA_RE.fullmatch(head_sha.strip()):
         raise PlanError('HEAD_SHA_REQUIRED')
-    head_sha = head_sha.strip()
+    head_sha = head_sha.strip().lower()
+    if isinstance(findings, dict):
+        findings = findings.get('findings')
     if not isinstance(summary_markdown, str) or not summary_markdown.strip():
         raise PlanError('SUMMARY_REQUIRED')
     if language not in ('es', 'en'):
@@ -458,28 +583,20 @@ def build_pr_review_payload(
     orca_notes = []
     out_of_diff = []
     seen_keys = set()
-    has_exploitable_security = False
+    exploitable_ids = []
 
     for item in findings:
-        if not isinstance(item, dict):
-            raise PlanError('FINDINGS_INVALID')
-        fid = item.get('id')
-        evidence = item.get('evidence')
-        if not isinstance(fid, str) or not fid.strip() or not isinstance(evidence, str) or not evidence.strip():
-            raise PlanError('FINDINGS_INVALID')
+        _check_finding(item)
+        fid = item['id']
         if item.get('material') is False:
             continue
         if item.get('status') in ('resolved', 'dismissed'):
             continue
-        if item.get('security_exploitable') is True:
-            has_exploitable_security = True
+        if item.get('security_exploitable') is True and fid.strip() not in exploitable_ids:
+            exploitable_ids.append(fid.strip())
 
         path = item.get('path')
         line = item.get('line')
-        if path is not None and not _safe_relative_path(path):
-            raise PlanError('INVALID_FINDING_PATH')
-        if line is not None and (type(line) is not int or line < 1):
-            raise PlanError('INVALID_FINDING_LINE')
 
         if path and line is not None and line in diff_lines.get(path, ()):
             dedupe_key = (fid.strip(), path, line)
@@ -521,13 +638,24 @@ def build_pr_review_payload(
             if item.get('path') and item.get('line'):
                 location = f"{item['path']}:{item['line']}"
             sev = f" ({item['severity']})" if item.get('severity') else ''
-            text = f"- **{item['id']}**{sev} `{location}`: {item['evidence'].strip()}"
+            text = f"- **{item['id']}**{sev} `{location}`: {_one_line(item['evidence'])}"
             if item.get('minimal_fix'):
                 label = 'Corrección mínima' if es else 'Minimal fix'
-                text += f" — {label}: {item['minimal_fix'].strip()}"
+                text += f" — {label}: {_one_line(item['minimal_fix'])}"
             bullets.append(_sanitize_local_root(text, local_root))
         general_body = f'{general_body}\n\n{section_title}\n\n{intro}\n\n' + '\n'.join(bullets)
 
+    if len(general_body) > MAX_GITHUB_BODY_CHARS:
+        raise PlanError('SUMMARY_TOO_LARGE')
+    if any(len(comment['body']) > MAX_GITHUB_BODY_CHARS for comment in inline_comments):
+        raise PlanError('COMMENT_TOO_LARGE')
+    local_path_hits = []
+    for text in [general_body] + [comment['body'] for comment in inline_comments]:
+        for hit in LOCAL_PATH_RE.findall(text):
+            if hit not in local_path_hits and len(local_path_hits) < 20:
+                local_path_hits.append(hit)
+
+    has_exploitable_security = bool(exploitable_ids)
     payload = {
         'commit_id': head_sha,
         'event': 'COMMENT',
@@ -547,6 +675,10 @@ def build_pr_review_payload(
         'orca_notes': orca_notes,
         'inline_count': len(inline_comments),
         'out_of_diff_count': len(out_of_diff),
+        # Paths that still look local after --local-root; the caller rewrites them before publishing.
+        'local_path_hits': local_path_hits,
+        # Findings flagged exploitable that a public repository must receive without exploit detail.
+        'redaction_required_ids': exploitable_ids if publish_policy['redact_security_exploits'] else [],
         'policy': publish_policy,
     }
 
@@ -582,6 +714,8 @@ def main(argv=None) -> int:
         rec.add_argument('--session-model', default=None)
         rec.add_argument('--requested-model', default=None)
         rec.add_argument('--requested-depth', choices=DEPTHS, default=None)
+        rec.add_argument('--available', action='append', default=None,
+                         help='Catalog model this host can run (repeatable); omit when routes were not checked')
 
         pub = sub.add_parser('publish-plan', help='Decide local vs PR publishing target and safety policy')
         pub.add_argument('--pr-url', default=None)
@@ -608,6 +742,7 @@ def main(argv=None) -> int:
                 session_model=args.session_model,
                 requested_model=args.requested_model,
                 requested_depth=args.requested_depth,
+                available_models=args.available,
             )
         elif args.action == 'publish-plan':
             out = decide_publish_target(
@@ -621,7 +756,7 @@ def main(argv=None) -> int:
             diff_text = _read_bounded_text(args.diff_file)
             try:
                 findings = json.loads(_read_bounded_text(args.findings_file))
-            except ValueError as exc:
+            except (ValueError, RecursionError) as exc:
                 raise PlanError('FINDINGS_INVALID') from exc
             out = build_pr_review_payload(
                 pr_url=args.pr_url,
@@ -637,6 +772,10 @@ def main(argv=None) -> int:
         return 0
     except PlanError as exc:
         print(json.dumps({'error': str(exc)}, ensure_ascii=False), file=sys.stderr)
+        return 2
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError) as exc:
+        # Unexpected input shape: name the failure without echoing its content.
+        print(json.dumps({'error': type(exc).__name__}, ensure_ascii=False), file=sys.stderr)
         return 2
 
 

@@ -115,5 +115,24 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(broken, [])
 
 
+    def test_readme_states_the_manifest_version(self):
+        version = json.loads((ROOT / "plugin.json").read_text(encoding="utf-8"))["version"]
+        banner = (ROOT / "README.md").read_text(encoding="utf-8").splitlines()[4]
+        self.assertTrue(banner.startswith(f"`{version}` "), banner)
+
+    def test_instructions_do_not_pin_the_retired_fixed_reviewer(self):
+        # revisa chooses among four models; a fixed gpt-6.1-sol in live instructions contradicts it.
+        # Scenario notebooks under tests/ and project memory record past runs and keep their wording.
+        stale = []
+        for source in tracked("*.md"):
+            relative = source.relative_to(ROOT).as_posix()
+            if relative.startswith(("tests/", ".peqa/")):
+                continue
+            for number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+                if re.search(r"gpt-6\.1-sol|Sol 6\.1", line):
+                    stale.append(f"{relative}:{number}")
+        self.assertEqual(stale, [])
+
+
 if __name__ == "__main__":
     unittest.main()

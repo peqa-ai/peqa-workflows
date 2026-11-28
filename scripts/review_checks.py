@@ -8,10 +8,12 @@ Public API:
 
 Report schema 1 has exactly: schema_version, language, depth, recommendation,
 minimums, requester, reason, criteria, findings, tests, security, impact, scope,
-trace. depth is 'lite' or 'deep'. criteria has requirements/tests/security/
-compatibility, each {status, evidence}. findings contains {id, material: bool,
-status, evidence} plus optional structured keys (severity, path, line,
-conditions, impact, minimal_fix, visible_flow, adjudication); tests contains
+trace. depth is 'lite' or 'deep'; a report written before depth existed omits
+it and is read as 'deep', the only depth that contract had. criteria has
+requirements/tests/security/compatibility, each {status, evidence}. findings
+contains {id, material: bool, status, evidence} plus optional structured keys
+(severity, path, line, conditions, impact, minimal_fix, visible_flow,
+adjudication, security_exploitable: bool); line needs path. tests contains
 {command, cwd: relative path, status, evidence}. security has string lists
 standards/controls/limitations. trace has models: string list, route: string,
 cr: string list, plus optional metadata keys (pr_url, base, head,
@@ -61,12 +63,15 @@ SEVERITIES = ('critical', 'high', 'medium', 'low')
 STATUSES = ('met', 'not_met', 'not_verified', 'not_applicable')
 RECOMMENDATIONS = ('approval_recommended', 'changes_required', 'review_incomplete')
 TEST_STATUSES = ('passed', 'failed', 'not_run', 'partial', 'no_tests')
-ROOT_FIELDS = {'schema_version', 'language', 'depth', 'recommendation', 'minimums',
+ROOT_FIELDS = {'schema_version', 'language', 'recommendation', 'minimums',
                'requester', 'reason', 'criteria', 'findings', 'tests',
                'security', 'impact', 'scope', 'trace'}
+# Reports written before depth existed omit it; they always carried the security review.
+ROOT_OPTIONAL = {'depth'}
+LEGACY_DEPTH = 'deep'
 FINDING_REQUIRED = {'id', 'material', 'status', 'evidence'}
 FINDING_OPTIONAL = {'severity', 'path', 'line', 'conditions', 'impact',
-                    'minimal_fix', 'visible_flow', 'adjudication'}
+                    'minimal_fix', 'visible_flow', 'adjudication', 'security_exploitable'}
 TRACE_REQUIRED = {'models', 'route', 'cr'}
 TRACE_OPTIONAL = {'pr_url', 'base', 'head', 'requested_model', 'effective_model',
                   'requested_effort', 'effective_effort', 'session_model', 'fallback'}
@@ -539,13 +544,13 @@ def validate_report(report, repo):
     def error(code):
         if code not in errors:
             errors.append(code)
-    if not _bounded_json(report) or not _shape(report, ROOT_FIELDS):
+    if not _bounded_json(report) or not _shape(report, ROOT_FIELDS, ROOT_OPTIONAL):
         return {'valid': False, 'errors': ['REPORT_SCHEMA_INVALID']}
     if type(report['schema_version']) is not int or report['schema_version'] != 1:
         error('REPORT_SCHEMA_INVALID')
     if report['language'] not in ('es', 'en'):
         error('REPORT_SCHEMA_INVALID')
-    if report['depth'] not in DEPTHS:
+    if report.get('depth', LEGACY_DEPTH) not in DEPTHS:
         error('DEPTH_INVALID')
     if report['recommendation'] not in RECOMMENDATIONS or report['minimums'] not in STATUSES[:3]:
         error('REPORT_SCHEMA_INVALID')
@@ -578,7 +583,8 @@ def validate_report(report, repo):
                 error('FINDINGS_INVALID')
             elif ('severity' in item and item['severity'] not in SEVERITIES) or (
                     'path' in item and not _relative(item['path'])) or (
-                    'line' in item and (type(item['line']) is not int or item['line'] < 1)) or any(
+                    'line' in item and (type(item['line']) is not int or item['line'] < 1 or 'path' not in item)) or (
+                    'security_exploitable' in item and type(item['security_exploitable']) is not bool) or any(
                     key in item and not _text(item[key])
                     for key in ('conditions', 'impact', 'minimal_fix', 'visible_flow', 'adjudication')):
                 error('FINDINGS_INVALID')
@@ -753,7 +759,7 @@ def render_report(report, repo, language=None):
     attribution = (('Generado por IA en nombre de ' if es else 'AI-generated on behalf of ') + _escape(requester) + '.') if requester else (
         'Generado por IA. Persona solicitante no identificada.' if es else 'AI-generated. Requester not identified.')
     trace = report['trace']
-    depth = report['depth']
+    depth = report.get('depth', LEGACY_DEPTH)
     pr_url = trace.get('pr_url')
     if pr_url and SAFE_PR_URL.fullmatch(pr_url):
         scope_display = pr_url
@@ -826,11 +832,26 @@ def render_report(report, repo, language=None):
     lines.extend(['', '## ' + ('Evidencia de seguridad' if es else 'Security evidence'), ''])
     has_security_entries = any(report['security'][k] for k in ('standards', 'controls', 'limitations'))
     if depth == 'lite' and not has_security_entries:
-        lines.append(
-            'Profundidad `lite`: se omitió la auditoría completa OWASP Top 10 / NIST SSDF al no observarse defectos de seguridad obvios en el cambio.'
-            if es else
-            'Depth `lite`: skipped full OWASP Top 10 / NIST SSDF compliance audit with no obvious security defects spotted in the change.'
-        )
+        # The note must not claim a clean result the security criterion contradicts.
+        security_status = report['criteria']['security']['status']
+        if security_status == 'not_met':
+            lines.append(
+                'Profundidad `lite`: no se hizo la auditoría completa OWASP Top 10 / NIST SSDF. Se observó un defecto de seguridad en el cambio; consulta el criterio de seguridad y los hallazgos.'
+                if es else
+                'Depth `lite`: no full OWASP Top 10 / NIST SSDF audit was run. A security defect was observed in the change; see the security criterion and the findings.'
+            )
+        elif security_status == 'not_verified':
+            lines.append(
+                'Profundidad `lite`: no se hizo la auditoría completa OWASP Top 10 / NIST SSDF y la seguridad aplicable quedó sin verificar.'
+                if es else
+                'Depth `lite`: no full OWASP Top 10 / NIST SSDF audit was run and applicable security remains unverified.'
+            )
+        else:
+            lines.append(
+                'Profundidad `lite`: se omitió la auditoría completa OWASP Top 10 / NIST SSDF al no observarse defectos de seguridad obvios en el cambio.'
+                if es else
+                'Depth `lite`: skipped full OWASP Top 10 / NIST SSDF compliance audit with no obvious security defects spotted in the change.'
+            )
     else:
         if depth == 'lite':
             lines.append(

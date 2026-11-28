@@ -26,18 +26,19 @@ LEGACY_ID = re.compile(r'^pr-([1-9][0-9]*)$')
 IDENTITY = re.compile(r'^(?:pr-[1-9][0-9]*|pr-url-[0-9a-f]{64}|change-[a-z0-9][a-z0-9-]{0,79})$')
 
 
+class BudgetError(Exception):
+    pass
+
+
 def _safe_label(value, code):
-    if value is None:
+    """Optional pass metadata. An empty value, such as an unset shell variable, records nothing."""
+    if value is None or (type(value) is str and not value.strip()):
         return None
-    if type(value) is not str or not value.strip() or len(value) > 256:
+    if type(value) is not str or len(value) > 256:
         raise BudgetError(code)
     if any(ord(char) < 32 or ord(char) == 127 for char in value):
         raise BudgetError(code)
     return value.strip()
-
-
-class BudgetError(Exception):
-    pass
 
 
 def now():

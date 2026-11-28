@@ -22,25 +22,29 @@ Profundidades disponibles:
 
 ### Regla de diversidad con la sesión actual
 
-1. Cuando el host (Orca o T3 Code) exponga el modelo de la sesión actual, recomienda un modelo **distinto al de la sesión** que además encaje con el dominio y la complejidad del cambio. Por ejemplo, en backend con sesión Opus 5.5 o Neon 4 se recomienda Astra 6.2; si la sesión ya corre en Astra 6.2, se diversifica a Opus 5.5 (con Neon 4 como alternativa inmediata). En frontend o uso general con sesión Opus 5.5 se recomienda Neon 4, y viceversa.
-2. Si el host no expone el modelo de la sesión actual, decláralo de forma expresa y recomienda solo por dominio y complejidad.
-3. Usa el helper incluido para calcular de forma determinista el orden de opciones y la recomendación:
+1. Cuando el host exponga el modelo de la sesión actual, recomienda un modelo **distinto al de la sesión** que además encaje con el dominio y la complejidad del cambio. Por ejemplo, en backend con sesión Opus 5.5 o Neon 4 se recomienda Astra 6.2; si la sesión ya corre en Astra 6.2, se diversifica a Opus 5.5 (con Neon 4 como alternativa inmediata). En frontend o uso general con sesión Opus 5.5 se recomienda Neon 4, y viceversa.
+2. El modelo de la sesión es el que declara el host: las instrucciones de sesión del cliente, el catálogo o el estado de T3 u Orca, o la configuración del CLI. Lo que el modelo crea de sí mismo no cuenta. Si el host no lo expone, o solo da un marcador como `auto` o `default`, decláralo de forma expresa y recomienda solo por dominio y complejidad.
+3. Antes de preguntar, comprueba qué modelos tienen ruta en este host con la sección de tu entorno, sin iniciar ninguna ejecución. Un modelo sin ruta se muestra como no disponible y no se recomienda mientras otro la tenga.
+4. Usa el helper incluido para calcular de forma determinista el orden de opciones y la recomendación:
 
 ```sh
 python3 "$REVIEW_PLAN_SCRIPT" recommend \
   --domain backend --complexity standard --risk auth \
-  --session-model "$SESSION_MODEL"
+  --session-model "$SESSION_MODEL" \
+  --available "Astra 6.2" --available "Opus 5.5"
 ```
 
-`REVIEW_PLAN_SCRIPT` apunta a `scripts/review_plan.py` de este skill. Acepta `--domain` (`backend`, `frontend`, `fullstack`, `simple`, `general`), `--complexity` (`simple`, `standard`, `complex`), `--risk` repetible (`auth`, `money`, `ledger`, `migration`, `security`, `multi_repo`, `concurrency`, `schema`, `high_risk`), `--session-model`, `--requested-model` y `--requested-depth`.
+`REVIEW_PLAN_SCRIPT` apunta a `scripts/review_plan.py` de este skill. Acepta `--domain` (`backend`, `frontend`, `fullstack`, `simple`, `general`), `--complexity` (`simple`, `standard`, `complex`), `--risk` repetible (`auth`, `authorization`, `money`, `ledger`, `migration`, `security`, `multi_repo`, `concurrency`, `schema`, `data_integrity`, `high_risk`), `--session-model`, `--requested-model`, `--requested-depth` y `--available` repetible, uno por modelo con ruta; omite `--available` si no pudiste comprobar las rutas.
+
+El helper reconoce un modelo por su familia como palabra completa (`claude-opus-5-5` es Opus, `gpt-6.2-sol` es Sol); la versión y el ID exactos los confirma el catálogo del host. De su salida usa `model_options` y `depth_options` en ese orden, `questions_needed` para saber qué preguntar, `session_model_disclosure` para declarar una sesión no detectada y `available` para marcar los modelos sin ruta. Si `selected_model_available` es `false`, dilo antes de reservar y ofrece las opciones con ruta. Si `selected_model_matches_session` es `true`, declara en el informe que el revisor comparte modelo con la sesión.
 
 ### Pregunta en una sola ronda
 
-Pregunta al usuario qué modelo y qué profundidad quiere en **una única ronda**, usando [la interfaz de preguntas](../../../references/runtime-tools.md#preguntas-al-usuario), colocando la opción recomendada primero en cada campo. Si el usuario ya indicó el modelo o la profundidad en su pedido, respeta esa elección y pregunta solo lo que falte; si indicó ambos, no preguntes. Esta selección no consume rondas de `idea` ni pasadas de revisión.
+Pregunta al usuario qué modelo y qué profundidad quiere en **una única ronda** con dos preguntas, una por campo, usando [la interfaz de preguntas](../../../references/runtime-tools.md#preguntas-al-usuario) y colocando la opción recomendada primero en cada una. Si la interfaz admite menos de cuatro opciones, muestra las primeras en el orden del helper y nombra las demás en el texto de la pregunta. Si el usuario ya indicó el modelo o la profundidad en su pedido, respeta esa elección y pregunta solo lo que falte; si indicó ambos, no preguntes. Esta selección no consume rondas de `idea` ni pasadas de revisión, y vale para todas las pasadas de ese PR.
 
 En una ejecución no interactiva donde nadie puede responder, aplica la recomendación de modelo y profundidad y decláralo en la trazabilidad del informe.
 
-Resuelve `$REVIEW_AGENT`, `$REVIEW_MODEL` y `$REVIEW_EFFORT` a partir del catálogo vivo del host elegido (catálogo de T3, guía instalada de Orca o CLIs disponibles). No inventes identificadores de modelo ni aliases de esfuerzo no confirmados por el host.
+Resuelve `$REVIEW_AGENT`, `$REVIEW_MODEL` y `$REVIEW_EFFORT` a partir del catálogo vivo del host elegido (catálogo de T3, guía instalada de Orca o CLIs disponibles). No inventes identificadores de modelo ni aliases de esfuerzo no confirmados por el host. Salvo indicación del usuario, pide el esfuerzo más alto que el host admita para ese modelo en `deep` y su esfuerzo predeterminado en `lite`.
 
 ## Agente principal en T3 Code
 
@@ -63,7 +67,7 @@ Lanza cada pasada como un worker nuevo en el checkout revisado, `$REVIEW_REPO`, 
   --spec-file "$REVIEW_PROMPT" --json
 ```
 
-`$REVIEW_PROMPT` vive fuera del código revisado. Omite `--effort` si el agente o la versión de Orca no admiten ese parámetro según `skills get orchestration`. Un `worker-start` iniciado consume la pasada aunque falle después. Si su recibo trae `failedStage`, no lo repitas: sigue la recuperación de esa guía y, si queda presupuesto, reserva otra pasada para la ruta del cliente del padre.
+`$REVIEW_PROMPT` vive fuera del código revisado. Omite `--effort` si el agente o la versión de Orca no admiten ese parámetro según `skills get orchestration`; `--effort` solo vale junto a `--model`. Un `worker-start` iniciado consume la pasada aunque falle después. Si su recibo trae `failedStage`, no lo repitas: sigue la recuperación de esa guía y, si queda presupuesto, reserva otra pasada para la ruta del cliente del padre.
 
 Orca no limita al worker a solo lectura, así que el brief lo prohíbe: no edita, no hace commit ni push, no publica comentarios ni revisiones en GitHub y no inicia workers ni subagentes. Antes de lanzarlo, el padre anota HEAD y `git status --porcelain` del checkout y de sus submódulos, y no edita mientras el revisor trabaja. Si ejecuta pruebas que el revisor pide, anota los archivos que esas ejecuciones generan. Al recibir `worker_done` repite la comprobación. Si algo cambió y no viene de esas ejecuciones, la pasada no vale como revisión independiente: informa qué cambió, consérvalo sin restaurarlo por tu cuenta y decide con el usuario.
 
